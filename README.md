@@ -208,7 +208,7 @@ names(histoneFiles) <- gsub(".broadPeak_hg38_homer.bed", "", names(histoneFiles)
 
 
 ## Example
-For testing MIRACUM-Pipe the public available dataset from Texas (http://txcrb.org/data.html and https://www.nature.com/articles/sdata201610) can be used. We provide the PDF reports for the samples TCRBOA6 and TCRBOA7. Both samples were run with the default parameters.
+TO DO
 
 ## Authors
 
