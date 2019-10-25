@@ -221,10 +221,7 @@ TO DO
 ## Acknowledgments
 We thank
 
-* The Molecular Tumor Board Freburg Team
-* The whole MIRACUM consortia
-* The German Ministry of Education and Research (BMBF) for funding
-* The developers from Control-FREEC for the code on CNV significance
+* TO DO
 
 
 ## Cite
