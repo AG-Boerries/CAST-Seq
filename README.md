@@ -236,4 +236,12 @@ If you use this work please cite Turchiano. et al., (submitted)
 
 ## References
 
+* Langmead, B, Salzberg, SL (2012). Fast gapped-read alignment with Bowtie 2. Nat. Methods, 9, 4:357-9.
+* Quinlan, AR, Hall, IM (2010). BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics, 26, 6:841-2.
+* Lawrence, M, Huber, W, Pagès, H, Aboyoun, P, Carlson, M, Gentleman, R, Morgan, MT, Carey, VJ (2013). Software for computing and annotating genomic ranges. PLoS Comput. Biol., 9, 8:e1003118.
+* Yu, G, Wang, LG, He, QY (2015). ChIPseeker: an R/Bioconductor package for ChIP peak annotation, comparison and visualization. Bioinformatics, 31, 14:2382-3.
+* Durinck, S, Spellman, PT, Birney, E, Huber, W (2009). Mapping identifiers for the integration of genomic datasets with the R/Bioconductor package biomaRt. Nat Protoc, 4, 8:1184-91.
+
+
+
 
