@@ -1,13 +1,15 @@
 # CAST-Seq
 
-TO DO
+See Turchiano. et al., (submitted) for detail information about CAST-Seq.
 
 ## Getting Started
 
 **General:** CAST-Seq pipeline
 
-**Composing of Results:**  TO DO
-
+**Composing of Results:**  The results directory is divided into 3 sub-directories: fastq_aln, guide_aln and random.
+*fastq_aln* contains all pre-processing and alignment files from fastq.gz to bam files.
+*guide_aln* contains the post-processing files from bed files to final xlsx report.
+*random* contains the information related to the random regions that are used for normalisation.
 
 ### Prerequisites
 Requiered software and databases
@@ -52,14 +54,14 @@ Requiered software and databases
 	* hg38.chrom.sizes (chromosome size file)
 	* TruSeq4-PE (adapter sequences)
 	* CancerGenesList_ENTREZ.txt (OncoKB cancer related genes)
-	* mismatch_table.xlsx
 
 If available, the used versions are noted.
 
 
 ### Additional Files
 #### Needed during epigenetic profil analysis
-histones
+Histones marks bed files (must be stored into annotations/histones/).
+Example of such file is provided for H3K4me3 in Primary hematopoietic stem cells (E035 from Roadmap Epigenomics https://egg2.wustl.edu/roadmap/web_portal/processed_data.html).
 
 ## Directory structure
 
@@ -81,7 +83,6 @@ CAST-Seq
 │   │   └── ...
 │   ├── CancerGenesList_ENTREZ.txt
 │   ├── hg38_TSS_TES.txt
-│   ├── mismatch_table.xlsx
 │   ├── hg38.chrom.sizes
 │   └──TruSeq4-PE.fa
 │
@@ -128,20 +129,19 @@ CAST-Seq
 
 ## Running CAST-Seq
 After all tools and databases are installed and work properly, you should prepare a XXX_run.sh file as described bellow.
-Then CAST-Seq pipeline can be used using this single command:
+Then the whole CAST-Seq pipeline can be executed using this single command:
 
 ```
-Rscript XXX_run.R
+Rscript ./script/run/XXX_run.R
 ```
 
 ### Adjusting **XXX_run.sh**
 the XXX_run.R need to be adjusted for each sample as described below.
 
 ```
-##################################################################################################################
 #### Parameters which have to be adjusted accoridng the the environment or the users needs
 
-
+##########################
 # INPUT FILE AND DIRECTORY
 
 # SET SAMPLE DIRECTORY NAME
@@ -156,7 +156,7 @@ controlName <- "UT-G3-d1_S3_L001"
 # SET REFERENCE FOLDER
 homeD <- "/home/gandri/offTargets/Giando/pipelineGit/"
 
-
+##################
 # OTHER PARAMETERS
 scriptD <- file.path(homeD, "script")
 annotD <- file.path(homeD, "annotations")
@@ -166,6 +166,9 @@ sampleD <- file.path(homeD, "samples", sampleDname)
 dataD <- file.path(sampleD, "data")
 resultD <- file.path(sampleD, "results", "guide_aln")
 dir.create(resultD, showWarnings = FALSE)
+
+#########
+# CUTOFFS
 
 # SET GUIDE SEQ
 refSeq <- toupper(as.character(readDNAStringSet(file.path(dataD, "gRNA.fa"))))
@@ -189,6 +192,9 @@ distance.cutoff <- 1500
 
 # SET PVALUE CUTOFF
 pv.cutoff <- 0.05
+
+#############
+# ANNOTATIONS
 
 # SET GENOME VERSION
 myGenome.size <- file.path(annotD, "hg38.chrom.sizes")
