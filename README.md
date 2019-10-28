@@ -227,8 +227,6 @@ use_python("/path/to/bin/python")
 source_python(file.path(scriptD, "lcs.py"))
 ```
 
-## Example
-TO DO
 
 ## Authors
 
