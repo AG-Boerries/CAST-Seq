@@ -149,16 +149,18 @@ the XXX_run.R need to be adjusted for each sample as described below.
 # INPUT FILE AND DIRECTORY
 
 # SET SAMPLE DIRECTORY NAME
-sampleDname <- "G3_HiFi_D1"
+sampleDname <- "XXX"
 
 # SET INPUT TEST FILE
-sampleName <- "G3-Hifi-d1_S4_L001"
+# (XXX_treated_R1_001.fastq.gz and XXX_treated_R2_001.fastq.gz must be in data/fastq/)
+sampleName <- "XXX_treated"
 
 # SET INPUT CONTROL FILE
-controlName <- "UT-G3-d1_S3_L001"
+# (XXX_UNtreated_R1_001.fastq.gz and XXX_UNtreated_R2_001.fastq.gz must be in data/fastq/)
+controlName <- "XXX_UNtreated"
 
 # SET REFERENCE FOLDER
-homeD <- "/home/gandri/offTargets/Giando/pipelineGit/"
+homeD <- "/path/to/CAST-Seq/"
 
 ##################
 # OTHER PARAMETERS
