@@ -73,22 +73,23 @@ Example of such file is provided for H3K4me3 in Primary hematopoietic stem cells
 CAST-Seq
 │
 ├── annotations
-│   ├── bowtie2Index
-│   │   ├── genome.1.bt2
-│   │   ├── genome.2.bt2
-│   │   ├── genome.3.bt2
-│   │   ├── genome.4.bt2
-│   │   ├── genome.fa.fai
-│   │   ├── genome.rev.1.bt2
-│   │   ├── genome.rev.1.bt2
-│   │   └── genome.fa
-│   ├── histones
-│   │   ├── H3K4me3.bed
-│   │   └── ...
-│   ├── CancerGenesList_ENTREZ.txt
-│   ├── hg38_TSS_TES.txt
-│   ├── hg38.chrom.sizes
-│   └──TruSeq4-PE.fa
+│   └── human
+│       ├── bowtie2Index
+│       │   ├── genome.1.bt2
+│       │   ├── genome.2.bt2
+│       │   ├── genome.3.bt2
+│       │   ├── genome.4.bt2
+│       │   ├── genome.fa.fai
+│       │   ├── genome.rev.1.bt2
+│       │   ├── genome.rev.1.bt2
+│       │   └── genome.fa
+│       ├── histones
+│       │   ├── H3K4me3.bed
+│       │   └── ...
+│       ├── CancerGenesList_ENTREZ.txt
+│       ├── hg38_TSS_TES.txt
+│       ├── chrom.sizes
+│       └──TruSeq4-PE.fa
 │
 ├── samples
 │   ├── XXX
