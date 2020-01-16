@@ -168,7 +168,7 @@ getRangeAlignment <- function(sq, p1, p2, nR, sm)
 }
 
 
-getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder)
+getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
 {
 	# DEFINE N RANGE
 	nRange <- seq(5, 50)
@@ -216,8 +216,10 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder)
 	print(inputName)
 	
 	# REGIONS 2 SEQUENCE
-	sequences <- bed2sequence(readMat)
+	sequences <- bed2sequence(readMat, g = gnm)
 	#sequences <- c(refSeq, sequences)# add refSeq
+
+	print(sequences[[1]])
 
 	###########
 	# ALIGNMENT

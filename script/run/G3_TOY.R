@@ -40,6 +40,16 @@ require(BSgenome.Hsapiens.UCSC.hg38)
 require(TxDb.Hsapiens.UCSC.hg38.knownGene)
 require(karyoploteR)
 
+# SPECIES SPECIFIC LIBRARIES
+
+# Human
+require(org.Hs.eg.db)
+require(BSgenome.Hsapiens.UCSC.hg38)
+require(TxDb.Hsapiens.UCSC.hg38.knownGene)
+TXDB <- TxDb.Hsapiens.UCSC.hg38.knownGene
+ORG <- org.Hs.eg.db
+ORG.STR <- "org.Hs.eg.db"
+
 
 ##########################################################################################
 ################                     PARAMETERS                         ################## 
@@ -64,7 +74,7 @@ homeD <- "./"
 # OTHER PARAMETERS
 
 scriptD <- file.path(homeD, "script")
-annotD <- file.path(homeD, "annotations")
+annotD <- file.path(homeD, "annotations/human")
 
 sampleD <- file.path(homeD, "samples", sampleDname)
 
@@ -96,7 +106,7 @@ distance.cutoff <- 1500
 pv.cutoff <- 0.05
 
 # SET GENOME VERSION
-myGenome.size <- file.path(annotD, "hg38.chrom.sizes")
+myGenome.size <- file.path(annotD, "chrom.sizes")
 
 # HG38 TSS TES
 geneMat <- read.delim(file.path(annotD, "hg38_TSS_TES.txt"), header = FALSE)

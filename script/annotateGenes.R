@@ -1,13 +1,13 @@
-library(openxlsx)
-library(ChIPseeker)
-library(clusterProfiler)
-library(GenomicFeatures)
-library(rtracklayer)
-library(org.Hs.eg.db)
-library(ggplot2)
+#library(openxlsx)
+#library(ChIPseeker)
+#library(clusterProfiler)
+#library(GenomicFeatures)
+#library(rtracklayer)
+#library(org.Hs.eg.db)
+#library(ggplot2)
 
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
 
 
@@ -115,7 +115,7 @@ annotateGene <- function(inputFile)
 
 	# ANNOTATE PEAKS (chipseeker)
 	readMat.anno.gr <- annotatePeak(readMat.gr, tssRegion=c(-3000, 3000), 
-							 TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all", level = "gene")
+							 TxDb=TXDB, annoDb=ORG.STR, overlap = "all", level = "gene")
 
 	# Save annotation
 	readMat.anno <-  as.data.frame(readMat.anno.gr)
@@ -146,7 +146,7 @@ annotateGeneTALEN <- function(inputFile)
 
 	# ANNOTATE PEAKS (chipseeker)
 	readMat.anno.gr <- annotatePeak(readMat.gr, tssRegion=c(-3000, 3000), 
-							 TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all", level = "gene")
+							 TxDb=TXDB, annoDb=ORG.STR, overlap = "all", level = "gene")
 
 	# Save annotation
 	readMat.anno <-  as.data.frame(readMat.anno.gr)

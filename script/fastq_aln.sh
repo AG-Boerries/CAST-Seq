@@ -10,15 +10,19 @@ CPU=12
 homeDir=$1
 
 # $2
-#mainDir=${homeDir}FANCF_decoy/
-mainDir=${homeDir}/samples/$2/
+annDir=$2/
 
-# $3 $4
+# $3
+#mainDir=${homeDir}FANCF_decoy/
+mainDir=${homeDir}/samples/$3/
+
+# $4 $5
 #Samples="FANCF-decoy_L001 FANCF-UT-decoy_L001"
-Samples="$3 $4"
+Samples="$4 $5"
 
 # Set up the directories and annotation files
-annotDir=${homeDir}annotations/
+#annotDir=${homeDir}annotations/
+annotDir=${annDir}
 dataDir=${mainDir}data/
 outDir=${mainDir}results/fastq_aln/
 outBedDir=${mainDir}results/guide_aln/
@@ -39,7 +43,7 @@ adapters=${annotDir}TruSeq4-PE.fa
 #crispSeq=TGCTCTTCAGCCTTTTGCAGTTTATCAGGATGAGGATGACCAGCATGTTGCCCACAAAACCAAAGATGAACACCAGTGAGTAGAGCGGAGGCAGGAGGCGGGCTGCGATTTGCTTCACATTGATTTTTTGGCAGGGCTCCGATGTATAATAATTGATGTCATAGATTGGACTTGACACTTGATAATCCATCTTGTTCCACCctgtgcataaataaaaagtga
 
 # Repeat masker parameters
-chrSize=${annotDir}hg38.chrom.sizes
+chrSize=${annotDir}chrom.sizes
 genomeFasta=${annotDir}bowtie2Index/genome.fa
 
 ############# ALIGNMENT ##################
@@ -55,19 +59,19 @@ do
 	fastqc -o ${outDir} --noextract ${pair1}
 	fastqc -o ${outDir} --noextract ${pair2}
 
-	################# FLASH PAIRING ###################
+	################# PEAR PAIRING ###################
 	echo "START PEAR PAIRING" > ${logFile}
 
-	# FLASH
-	flash -t ${CPU} -o ${fname} -d ${outDir} -m 10 -M 250 ${pair2} ${pair1} > ${logFile}
-
+	# PEAR
+	pear -j 12 -o ${fname} -f ${pair2} -r ${pair1} -o ${outDir}${fname} > ${logFile}
+	
 	# MERGE PAIRED AND UNPAIRED R2
 	# we used notCombined_1.fastq because we used R2 as R1 with flash
 	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	gzip ${outDir}${fname}.extendedFrags.fastq
-	gzip ${outDir}${fname}.notCombined_1.fastq
-	gzip ${outDir}${fname}.notCombined_2.fastq
+	cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	gzip ${outDir}${fname}.assembled.fastq
+	gzip ${outDir}${fname}.unassembled.forward.fastq
+	gzip ${outDir}${fname}.unassembled.reverse.fastq
 	
 	echo "_merged.fastq.gz: " >> ${logFile}
 	echo $(zcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -149,6 +153,7 @@ do
 
 	############## ALIGNMENT ###########################
 	##bowtie alignment of trimmed but not collapsed seq##
+	echo ${annotDir}bowtie2Index/genome
 	bowtie2 -x ${annotDir}bowtie2Index/genome -U ${outDir}${fname}_trim3.fastq.gz --very-sensitive -p ${CPU} | samtools view -bS -> ${outDir}${fname}_Alignment.bam
 
 	echo "_Alignment.bam: " >> ${logFile}

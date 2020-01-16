@@ -3,7 +3,7 @@
 #library(openxlsx)
 #library(GenomicRanges)
 
-ensembl = useMart("ensembl",dataset="hsapiens_gene_ensembl")# 38
+#ensembl = useMart("ensembl",dataset="hsapiens_gene_ensembl")# 38
 
 
 ############################################
@@ -12,20 +12,20 @@ ensembl = useMart("ensembl",dataset="hsapiens_gene_ensembl")# 38
 ###                                      ###
 ############################################
 
-symbol2entrez <- function(symbol)
-{
-	entrez <- mget(as.character(symbol), org.Hs.egSYMBOL2EG, ifnotfound=NA)
-	entrez <- unique(unlist(lapply(entrez, function(i) return(i[1]))))
-	entrez <- entrez[!is.na(entrez)]
-	return(entrez)
-}
+#symbol2entrez <- function(symbol)
+#{
+#	entrez <- mget(as.character(symbol), org.Hs.egSYMBOL2EG, ifnotfound=NA)
+#	entrez <- unique(unlist(lapply(entrez, function(i) return(i[1]))))
+#	entrez <- entrez[!is.na(entrez)]
+#	return(entrez)
+#}
 
-entrez2symbol <- function(entrez)
-{
-	symbol <- mget(as.character(entrez), org.Hs.egSYMBOL, ifnotfound=NA)
-	symbol <- unlist(lapply(symbol, function(i) return(i[1])))
-	return(symbol)
-}
+#entrez2symbol <- function(entrez)
+#{
+#	symbol <- mget(as.character(entrez), org.Hs.egSYMBOL, ifnotfound=NA)
+#	symbol <- unlist(lapply(symbol, function(i) return(i[1])))
+#	return(symbol)
+#}
 
 #gene2bed <- function(entrez, upstream = 0, downstream = 0)
 #{

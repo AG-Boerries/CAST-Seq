@@ -1,7 +1,7 @@
 
 
 
-bedTools.2in<-function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedIntersect",bed1,bed2,opt.string="")
+bedTools.2in<-function(functionstring="/usr/bin/bedIntersect",bed1,bed2,opt.string="")
 {
   #create temp files
   a.file=tempfile()
@@ -25,7 +25,7 @@ bedTools.2in<-function(functionstring="/home/gandri/Programs/bedtools2-master/bi
 
 
 
-bam2bed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedtools bamtobed", bam, bed, opt.string="")
+bam2bed <- function(functionstring="/usr/bin/bedtools bamtobed", bam, bed, opt.string="")
 {
 	options(scipen =99)
 	
@@ -35,7 +35,7 @@ bam2bed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/b
 }
 
 
-sortBed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/sortBed", bed, bed.sort)
+sortBed <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
 {
 	options(scipen =99)
 	
@@ -44,7 +44,7 @@ sortBed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/s
   	try(system(command))
 }
 
-sortBedOLD <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/sortBed", bed, bed.sort)
+sortBedOLD <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
 {
 	options(scipen =99)
 	
@@ -53,7 +53,7 @@ sortBedOLD <- function(functionstring="/home/gandri/Programs/bedtools2-master/bi
   	try(system(command, intern = TRUE))
 }
 
-bedCoverage <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedtools genomecov", bed, bed.cov, opt.string="")
+bedCoverage <- function(functionstring="/usr/bin/bedtools genomecov", bed, bed.cov, opt.string="")
 {
 	options(scipen =99)
 	
@@ -64,7 +64,7 @@ bedCoverage <- function(functionstring="/home/gandri/Programs/bedtools2-master/b
 
 
 
-getRandomBed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedtools random", l, n, outFile, opt.string="")
+getRandomBed <- function(functionstring="/usr/bin/bedtools random", l, n, outFile, opt.string="")
 {
 	options(scipen =99)
 	
@@ -73,7 +73,7 @@ getRandomBed <- function(functionstring="/home/gandri/Programs/bedtools2-master/
   	try(system(command))
 }
 
-getClosest <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedtools closest", bed1, bed2, outFile, opt.string="")
+getClosest <- function(functionstring="/usr/bin/bedtools closest", bed1, bed2, outFile, opt.string="")
 {
 	options(scipen =99)
 
@@ -83,7 +83,7 @@ getClosest <- function(functionstring="/home/gandri/Programs/bedtools2-master/bi
 }
 
 
-shuffleBed <- function(functionstring="/home/gandri/Programs/bedtools2-master/bin/bedtools shuffle", inFile, myGenome, outFile, opt.string="")
+shuffleBed <- function(functionstring="/usr/bin/bedtools shuffle", inFile, myGenome, outFile, opt.string="")
 {
 	options(scipen =99)
 	

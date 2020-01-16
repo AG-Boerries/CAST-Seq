@@ -13,6 +13,7 @@ print("################     FASTQ ALIGNMENT    ################")
 
 fastqAln(functionstring=paste0("sh ", file.path(scriptD,"fastq_aln.sh")),
 	homeFolder = homeD,
+	annotFolder = annotD,
 	sampleFolder = sampleDname,
 	testSample = sampleName,
 	utSample = controlName
@@ -51,10 +52,10 @@ nbReads.sample <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(samp
 nbReads.control <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz"))))
 
 doEnrichment(gsub(".bed$", "_cluster.bed", sampleBed), gsub(".bed$", "_cluster.bed", controlBed),
-			 nbReads.sample, nbReads.control, w)
+			 nbReads.sample, nbReads.control, w, myGenome.size)
 	
 doEnrichment(gsub(".bed$", "_cluster.bed", controlBed), gsub(".bed$", "_cluster.bed", sampleBed),
-			 nbReads.control, nbReads.sample, w)
+			 nbReads.control, nbReads.sample, w, myGenome.size)
 	
 # ADD AVERAGE MAPQ
 addMAPQ(file.path(resultD, paste0(sampleName, "_w", w, ".xlsx")),
@@ -73,7 +74,8 @@ print("################     GUIDE SEQ ALIGNMENT    ################")
 guideD <- resultD
 getGuideAlignment(inputF = file.path(resultD, paste0(sampleName, "_w", w, ".xlsx")),
 				  guide = refSeq,
-				  alnFolder = guideD
+				  alnFolder = guideD,
+				  gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens
 				  )
 file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
 				  
@@ -92,7 +94,8 @@ if(!file.exists(file.path(randomD, paste0(randomName, ".bed")))){
 	# DO GUIDE ALIGNMENT ON RANDOM SEQUENCES
 	getGuideAlignment(inputF = file.path(randomD, paste0(randomName, ".bed")),
 					  guide = refSeq,
-					  alnFolder = randomD
+					  alnFolder = randomD,
+					  gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens
 					  )	
 	file.remove(list.files(randomD, pattern = "_TMP.txt", full.names = TRUE))
 	}
@@ -224,7 +227,8 @@ print("################     GUIDE SEQ ALIGNMENT    ################")
 guideD <- resultD
 getGuideAlignment(inputF = file.path(resultD, paste0(controlName, "_w", w, ".xlsx")),
 				  guide = refSeq,
-				  alnFolder = guideD
+				  alnFolder = guideD,
+				  gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens
 				  )
 file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
 	

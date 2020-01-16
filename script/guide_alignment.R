@@ -141,7 +141,7 @@ getAlnSumStr <- function(aln.test, aln.ref)
 	return(paste(alnChar, collapse=""))
 }
 
-getGuideAlignment <- function(inputF, guide, alnFolder)
+getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
 {
 	# DEFINE REFERENCE SEQUENCE
 	refSeq <- guide
@@ -157,7 +157,7 @@ getGuideAlignment <- function(inputF, guide, alnFolder)
 	print(inputName)
 	
 	# REGIONS 2 SEQUENCE
-	sequences <- bed2sequence(readMat)
+	sequences <- bed2sequence(readMat, g = gnm)
 	sequences <- c(refSeq, sequences)# add refSeq
 
 
@@ -168,14 +168,18 @@ getGuideAlignment <- function(inputF, guide, alnFolder)
 	alnList.norm <- mclapply(sequences, pairwiseAlignment, subject = refSeq,
 		type = "local-global", substitutionMatrix = sm,
 		gapOpening = 1, gapExtension = 1,
-		mc.cores = 6
+		mc.cores = 12
 		)
 
 	alnList.rev <- mclapply(sequences, function(i)
 		pairwiseAlignment(getRevComp(i), subject = refSeq,
 			type = "local-global", substitutionMatrix = sm,
-			gapOpening = 1, gapExtension = 1), mc.cores = 6
+			gapOpening = 1, gapExtension = 1), mc.cores = 12
 		)
+
+	print("TEST")
+	print(score(alnList.norm[[1]]))
+	print(score(alnList.rev[[1]]))
 
 	# GET BEST ALIGNMENT
 	alnList <- lapply(1:length(alnList.norm), function(i)

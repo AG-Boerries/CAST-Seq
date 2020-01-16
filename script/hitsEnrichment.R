@@ -8,11 +8,24 @@
 ###                                      ###
 ############################################
 
-
-expand <- function(readMat, size)
+getLimits <- function(m, chrFile)
 {
+	chr.size <- read.delim(chrFile, stringsAsFactors = FALSE, header = FALSE)
+	return(chr.size[match(m[,1], chr.size[,1]), 2])
+}
+
+expand <- function(readMat, size, chrFile)
+{
+	limits <- getLimits(readMat, chrFile)
+	
+	# remove sites on un-defined chr
+	readMat <- readMat[!is.na(limits), ]
+	limits <- limits[!is.na(limits)]
+	
 	readMat$start <- readMat$start - size
+	readMat$start[readMat$start < 0] <- 0
 	readMat$end <- readMat$end + size
+	readMat$end[readMat$end > limits] <- limits[readMat$end > limits]
 	return(readMat)
 }
 
@@ -67,7 +80,7 @@ overlapFiltering <- function(m)
 }
 
 
-doEnrichment <- function(testFile, refFile, nbTest, nbRef, size)
+doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 {
 	# LOAD CLUSTERS
 	cl.test <- read.delim(testFile)
@@ -78,8 +91,8 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size)
 	print(head(cl.ref))
 
 	# EXPAND WINDOW
-	cl.test <- expand(cl.test, size)
-	cl.ref <- expand(cl.ref, size)
+	cl.test <- expand(cl.test, size, chrFile)
+	cl.ref <- expand(cl.ref, size, chrFile)
 
 	# CONVERT TO GRANGES
 	cl.test.gr <- makeGRangesFromDataFrame(cl.test, seqnames.field = "chromosome",

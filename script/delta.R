@@ -13,7 +13,7 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 	
 	# read the bed file
 	bed <-  as.data.frame(read.table(inputFile,header=FALSE,sep="\t", stringsAsFactors=FALSE, quote="", fill = TRUE))
-
+	
 	# Remove ON-target reads
 	if(!is.null(otsF)){
 		ots <- read.delim(otsF, header = FALSE)
