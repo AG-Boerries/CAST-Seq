@@ -58,20 +58,34 @@ do
 	############## Quality control fastq files #####################
 	fastqc -o ${outDir} --noextract ${pair1}
 	fastqc -o ${outDir} --noextract ${pair2}
+	
+	################# FLASH PAIRING ###################
+	echo "START FLASH PAIRING" > ${logFile}
+
+	# FLASH
+	flash -t ${CPU} -o ${fname} -d ${outDir} -m 10 -M 250 -O ${pair2} ${pair1} > ${logFile}
+
+	# MERGE PAIRED AND UNPAIRED R2
+	# we used notCombined_1.fastq because we used R2 as R1 with flash
+	cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
+	cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	gzip ${outDir}${fname}.extendedFrags.fastq
+	gzip ${outDir}${fname}.notCombined_1.fastq
+	gzip ${outDir}${fname}.notCombined_2.fastq
 
 	################# PEAR PAIRING ###################
-	echo "START PEAR PAIRING" > ${logFile}
+	#echo "START PEAR PAIRING" > ${logFile}
 
 	# PEAR
-	pear -j 12 -o ${fname} -f ${pair2} -r ${pair1} -o ${outDir}${fname} > ${logFile}
+	#pear -j 12 -o ${fname} -f ${pair2} -r ${pair1} -o ${outDir}${fname} > ${logFile}
 	
 	# MERGE PAIRED AND UNPAIRED R2
 	# we used notCombined_1.fastq because we used R2 as R1 with flash
 	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	gzip ${outDir}${fname}.assembled.fastq
-	gzip ${outDir}${fname}.unassembled.forward.fastq
-	gzip ${outDir}${fname}.unassembled.reverse.fastq
+	#cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	#gzip ${outDir}${fname}.assembled.fastq
+	#gzip ${outDir}${fname}.unassembled.forward.fastq
+	#gzip ${outDir}${fname}.unassembled.reverse.fastq
 	
 	echo "_merged.fastq.gz: " >> ${logFile}
 	echo $(zcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}

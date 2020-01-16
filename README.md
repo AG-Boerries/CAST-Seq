@@ -21,6 +21,7 @@ Requiered software and databases
 1. Software
 
 	* R (3.4.2)
+	* FLASh (v1.2.11) from https://ccb.jhu.edu/software/FLASH/
 	* Bbmap (38.22) from https://jgi.doe.gov/data-and-tools/bbtools/
 	* Bowtie2 (2.3.4.2) from http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
 	* samtools (1.9) from http://samtools.sourceforge.net
@@ -34,7 +35,7 @@ Requiered software and databases
 	* genome fasta
 
 
-4. R package
+4. R packages
 	* openxlsx
 	* GenomicRanges
 	* Biostrings
@@ -44,18 +45,19 @@ Requiered software and databases
 	* textreadr
 	* parallel
 	* ChIPseeker
-	* org.Hs.eg.db
 	* clusterProfiler
 	* rtracklayer
 	* biomaRt
 	* tools
+	* karyoploteR
+	
+	* org.Hs.eg.db
 	* BSgenome.Hsapiens.UCSC.hg38
 	* TxDb.Hsapiens.UCSC.hg38.knownGene
-	* karyoploteR
 
 5. Additional Files (provided in annotation folder)
 	* hg38_TSS_TES.txt (Bed file containing TSS and TES as start and end locations respectively)
-	* hg38.chrom.sizes (chromosome size file)
+	* chrom.sizes (chromosome size file)
 	* TruSeq4-PE (adapter sequences)
 	* CancerGenesList_ENTREZ.txt (OncoKB cancer related genes)
 
@@ -166,7 +168,7 @@ homeD <- "/path/to/CAST-Seq/"
 ##################
 # OTHER PARAMETERS
 scriptD <- file.path(homeD, "script")
-annotD <- file.path(homeD, "annotations")
+annotD <- file.path(homeD, "annotations/human")
 
 sampleD <- file.path(homeD, "samples", sampleDname)
 
@@ -204,7 +206,7 @@ pv.cutoff <- 0.05
 # ANNOTATIONS
 
 # SET GENOME VERSION
-myGenome.size <- file.path(annotD, "hg38.chrom.sizes")
+myGenome.size <- file.path(annotD, "chrom.sizes")
 
 # HG38 TSS TES
 geneMat <- read.delim(file.path(annotD, "hg38_TSS_TES.txt"), header = FALSE)
