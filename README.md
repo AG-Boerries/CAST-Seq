@@ -234,6 +234,7 @@ source_python(file.path(scriptD, "lcs.py"))
 ## Authors
 
 * Geoffroy Andrieux
+* Giandomenico Turchiano
 
 
 ## License
