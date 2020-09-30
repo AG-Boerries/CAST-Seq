@@ -122,8 +122,8 @@ CAST-Seq
 │
 └── script   
     ├── run
-    │   ├── XXX_run.R
-    │   ├── YYY_run.R
+    │   ├── XXX.R
+    │   ├── YYY.R
     │  	└── ...
     ├── lcs.py
     ├── annotateGenes.R
@@ -139,96 +139,24 @@ After all tools and databases are installed and work properly, you should prepar
 Then the whole CAST-Seq pipeline can be executed using this single command:
 
 ```
-Rscript ./script/run/XXX_run.R
+Rscript ./CAST-Seq.R --pipeline "crispr"\
+	             --sampleDname "G3_TOY"\
+		     --sampleName "G3_treated"\
+		     --controlName "G3_UNtreated"\
+		     --homeD "../../"
 ```
 
-### Adjusting **XXX_run.sh**
-the XXX_run.R need to be adjusted for each sample as described below.
+**--pipeline** name of the pipeline you want to use. Choose between "crispr" and "talen".
+**--sampleDname** name of sample directory
+**--sampleName** XXX name of test (treated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist
+**--controlName** XXX name of control (untreated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist
+**--homeD** name of home directory
 
-```
-#### Parameters which have to be adjusted accoridng the the environment or the users needs
+### Parameters**
+Additional parameters can be changed in the command above. Here is a description of these parameters:
 
-##########################
-# INPUT FILE AND DIRECTORY
+**--grna** name of gRNA fasta (default "gRNA.fa")
 
-# SET SAMPLE DIRECTORY NAME
-sampleDname <- "XXX"
-
-# SET INPUT TEST FILE
-# (XXX_treated_R1_001.fastq.gz and XXX_treated_R2_001.fastq.gz must be in data/fastq/)
-sampleName <- "XXX_treated"
-
-# SET INPUT CONTROL FILE
-# (XXX_UNtreated_R1_001.fastq.gz and XXX_UNtreated_R2_001.fastq.gz must be in data/fastq/)
-controlName <- "XXX_UNtreated"
-
-# SET REFERENCE FOLDER
-homeD <- "/path/to/CAST-Seq/"
-
-##################
-# OTHER PARAMETERS
-scriptD <- file.path(homeD, "script")
-annotD <- file.path(homeD, "annotations/human")
-
-sampleD <- file.path(homeD, "samples", sampleDname)
-
-dataD <- file.path(sampleD, "data")
-resultD <- file.path(sampleD, "results", "guide_aln")
-dir.create(resultD, showWarnings = FALSE)
-
-#########
-# CUTOFFS
-
-# SET GUIDE SEQ
-refSeq <- toupper(as.character(readDNAStringSet(file.path(dataD, "gRNA.fa"))))
-
-# SET ON-TARGET SITE
-otsBed <- file.path(dataD, "ots.bed")
-otsDistance <- 50
-surrounding_size <- 20000
-
-# SET FLANKING REGIONS (+/- flanking size)
-flankingSize <- 2500
-
-# SET NUMBER OF RANDOM SEQUENCES
-nb.rd <- 10000
-
-# SET WIDTH
-w = 250
-
-# SET DISTANCE CUTOFF (FOR CLUSTERS)
-distance.cutoff <- 1500
-
-# SET PVALUE CUTOFF
-pv.cutoff <- 0.05
-
-#############
-# ANNOTATIONS
-
-# SET GENOME VERSION
-myGenome.size <- file.path(annotD, "chrom.sizes")
-
-# HG38 TSS TES
-geneMat <- read.delim(file.path(annotD, "hg38_TSS_TES.txt"), header = FALSE)
-
-# SET ONCO ENTREZ LIST
-oncoEntrez <- file.path(annotD, "CancerGenesList_ENTREZ.txt")
-onco.width <- 3000
-
-# SET HISTONE BROAD PEAKS FILES
-histoneFiles <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = TRUE)
-names(histoneFiles) <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = FALSE)
-names(histoneFiles) <- gsub(".broadPeak_hg38_homer.bed", "", names(histoneFiles))
-```
-
-Python path must be defined in XXX_run.R as follow:
-
-```
-################     SET PYTHON FOR LCS    ################ 
-require(reticulate)
-use_python("/path/to/bin/python")
-source_python(file.path(scriptD, "lcs.py"))
-```
 
 
 ## Authors
