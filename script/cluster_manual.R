@@ -7,19 +7,19 @@ library(openxlsx)
 ###                                      ###
 ############################################
 
-getCluster <- function(coord, bedMat, th){
+getHits <- function(coord, bedMat, th){
 	bedMat.sub <- bedMat[bedMat$chromosome == coord$chr &
 						 bedMat$start >= coord$start &
 						 bedMat$end <= coord$end, ]
 	
 	nbReads <- sum(bedMat.sub$read)
-	nbCluster <- 0
+	nbHits <- 0
 	
 	for(delta in bedMat.sub$delta){
-		if(delta <= th) nbCluster <- nbCluster + 1
+		if(delta <= th) nbHits <- nbHits + 1
 	}
 
-	return(c(read = nbReads, collapseCluster = nbCluster))
+	return(c(read = nbReads, hits = nbHits))
 }
 
 

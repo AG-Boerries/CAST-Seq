@@ -1,7 +1,7 @@
 
 
 
-bedTools.2in<-function(functionstring="/usr/bin/bedIntersect",bed1,bed2,opt.string="")
+bedTools.2in<-function(functionstring="bedIntersect",bed1,bed2,opt.string="")
 {
   #create temp files
   a.file=tempfile()
@@ -25,7 +25,7 @@ bedTools.2in<-function(functionstring="/usr/bin/bedIntersect",bed1,bed2,opt.stri
 
 
 
-bam2bed <- function(functionstring="/usr/bin/bedtools bamtobed", bam, bed, opt.string="")
+bam2bed <- function(functionstring="bedtools bamtobed", bam, bed, opt.string="")
 {
 	options(scipen =99)
 	
@@ -35,7 +35,7 @@ bam2bed <- function(functionstring="/usr/bin/bedtools bamtobed", bam, bed, opt.s
 }
 
 
-sortBed <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
+sortBed <- function(functionstring="sortBed", bed, bed.sort)
 {
 	options(scipen =99)
 	
@@ -44,7 +44,7 @@ sortBed <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
   	try(system(command))
 }
 
-sortBedOLD <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
+sortBedOLD <- function(functionstring="sortBed", bed, bed.sort)
 {
 	options(scipen =99)
 	
@@ -53,7 +53,7 @@ sortBedOLD <- function(functionstring="/usr/bin/sortBed", bed, bed.sort)
   	try(system(command, intern = TRUE))
 }
 
-bedCoverage <- function(functionstring="/usr/bin/bedtools genomecov", bed, bed.cov, opt.string="")
+bedCoverage <- function(functionstring="bedtools genomecov", bed, bed.cov, opt.string="")
 {
 	options(scipen =99)
 	
@@ -64,7 +64,7 @@ bedCoverage <- function(functionstring="/usr/bin/bedtools genomecov", bed, bed.c
 
 
 
-getRandomBed <- function(functionstring="/usr/bin/bedtools random", l, n, outFile, opt.string="")
+getRandomBed <- function(functionstring="bedtools random", l, n, outFile, opt.string="")
 {
 	options(scipen =99)
 	
@@ -73,7 +73,7 @@ getRandomBed <- function(functionstring="/usr/bin/bedtools random", l, n, outFil
   	try(system(command))
 }
 
-getClosest <- function(functionstring="/usr/bin/bedtools closest", bed1, bed2, outFile, opt.string="")
+getClosest <- function(functionstring="bedtools closest", bed1, bed2, outFile, opt.string="")
 {
 	options(scipen =99)
 
@@ -83,7 +83,7 @@ getClosest <- function(functionstring="/usr/bin/bedtools closest", bed1, bed2, o
 }
 
 
-shuffleBed <- function(functionstring="/usr/bin/bedtools shuffle", inFile, myGenome, outFile, opt.string="")
+shuffleBed <- function(functionstring="bedtools shuffle", inFile, myGenome, outFile, opt.string="")
 {
 	options(scipen =99)
 	
@@ -108,6 +108,23 @@ nbReadFastqgz <- function(inFile)
 	cat(command,"\n")
   	try(system(command, intern = TRUE))
 }
+
+nbPlusReadBam <- function(inFile)
+{
+	options(scipen =99)
+	command=paste0("samtools view -F 0x10 ", inFile, " | cut -f1 | sort | uniq | wc -l")
+	cat(command,"\n")
+  	try(system(command, intern = TRUE))
+}
+
+nbMinusReadBam <- function(inFile)
+{
+	options(scipen =99)
+	command=paste0("samtools view -f 0x10 ", inFile, " | cut -f1 | sort | uniq | wc -l")
+	cat(command,"\n")
+  	try(system(command, intern = TRUE))
+}
+
 
 
 

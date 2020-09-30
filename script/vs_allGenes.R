@@ -12,6 +12,43 @@
 ###                                      ###
 ############################################
 
+
+finalize <- function(inputFile){
+	# LOAD INPUT FILE
+	readMat <- read.xlsx(inputFile, sheet = 1)
+	
+	# RE-ORDER
+	readMat$group <- factor(readMat$group, levels = c("OMT", "HMT", "NBS"))
+	readMat <- readMat[order(readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
+	
+	# SITE SUBSETS
+	readMat.OMT <- readMat[readMat$group == "OMT",]
+	readMat.HMT <- readMat[readMat$group == "HMT",]
+	readMat.NBS <- readMat[readMat$group == "NBS",]
+	
+	readMat.signif <- readMat[readMat$adj.pvalue < 0.05, ]
+	readMat.OMT.signif <- readMat[readMat$group == "OMT" & readMat$adj.pvalue < 0.05,]
+	readMat.HMT.signif <- readMat[readMat$group == "HMT" & readMat$adj.pvalue < 0.05,]
+	readMat.NBS.signif <- readMat[readMat$group == "NBS" & readMat$adj.pvalue < 0.05,]
+	
+
+	
+	# SAVE
+	toxlsx <- list(ALL = readMat,
+				   OMT = readMat.OMT,
+				   HMT = readMat.HMT,
+				   NBS = readMat.NBS,
+				   ALL.signif = readMat.signif,
+				   OMT.signif = readMat.OMT.signif,
+				   HMT.signif = readMat.HMT.signif,
+				   NBS.signif = readMat.NBS.signif
+				   )
+
+	write.xlsx(toxlsx, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_FINAL.xlsx", inputFile),
+		row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'))
+
+}
+
 symbol2entrez <- function(symbol)
 {
 	if(ORG.STR == "org.Hs.eg.db") entrez <- mget(as.character(symbol), org.Hs.egSYMBOL2EG, ifnotfound=NA)
@@ -270,19 +307,6 @@ addGenes("OT_ovl_w250_aln_stat_FLANK_GROUP_GENES_ONCO.xlsx", oncoFile = oncoFile
 setwd(file.path("~/cluster/master/offTargets/Giando/pipeline/HBBTal_D1/results/overlap_aln/"))
 addGenes("HBBTal_ovl_w250_aln_stat_FLANK_GROUP_GENES_ONCO.xlsx", oncoFile = oncoFile,
 	genes.width = 0, site.width = 100000)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

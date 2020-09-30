@@ -16,10 +16,10 @@ return(c("nb=0" = sum(x == 0) / length(x) * 100,
 }
 
 
-piePlot <- function(inputF, outputF, clusters = NULL, score = NULL, pv = NULL)
+piePlot <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 {
 	readMat <- read.xlsx(inputF, sheet = 1)
-	if(!is.null(clusters)) readMat <- readMat[readMat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat <- readMat[readMat$hits > hits, ]
 	if(!is.null(score)) readMat <- readMat[readMat$score > score, ]
 	if(!is.null(pv)) readMat <- readMat[readMat$adj.pvalue < pv, ]
 

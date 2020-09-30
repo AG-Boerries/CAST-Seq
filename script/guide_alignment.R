@@ -168,13 +168,13 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	alnList.norm <- mclapply(sequences, pairwiseAlignment, subject = refSeq,
 		type = "local-global", substitutionMatrix = sm,
 		gapOpening = 1, gapExtension = 1,
-		mc.cores = 12
+		mc.cores = NBCPU
 		)
 
 	alnList.rev <- mclapply(sequences, function(i)
 		pairwiseAlignment(getRevComp(i), subject = refSeq,
 			type = "local-global", substitutionMatrix = sm,
-			gapOpening = 1, gapExtension = 1), mc.cores = 12
+			gapOpening = 1, gapExtension = 1), mc.cores = NBCPU
 		)
 
 	print("TEST")
@@ -268,7 +268,7 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 
 }
 
-guidePlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv = NULL, ref = NULL)
+guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL)
 {
 	###################
 	# DISPLAY ALIGNMENT
@@ -278,7 +278,7 @@ guidePlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv =
 
 	# FILTER TOP SCORE
 	readMat.stat <- readMat.stat[order(-readMat.stat$score), ]
-	if(!is.null(clusters)) readMat.stat <- readMat.stat[readMat.stat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
 	if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score > score, ]# change score!!!
 	if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
 
@@ -292,7 +292,7 @@ guidePlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv =
 			)
 		alnDisplay <- do.call(rbind, alnDisplay)
 		#rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$read), sep = ":")
-		rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$collapseCluster), sep = ":")
+		rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$hits), sep = ":")
 	
 	
 		# Add refseq on top
@@ -348,14 +348,14 @@ guidePlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv =
 	}
 }
 
-logoPlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv = NULL, ref)
+logoPlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref)
 {
 	# READ INPUT FILE
 	readMat.stat <- read.xlsx(inputFile)
 
 	# FILTER TOP SCORE
 	readMat.stat <- readMat.stat[order(-readMat.stat$score), ]
-	if(!is.null(clusters)) readMat.stat <- readMat.stat[readMat.stat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
 	if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score > score, ]# change score!!!
 	if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
 	
@@ -392,6 +392,22 @@ logoPlot <- function(inputFile, outputFile, clusters = NULL, score = NULL, pv = 
 
 
 }
+
+
+
+checkSignif <- function(readFile, hits = NULL, score = NULL, pv = NULL){
+	readMat <- read.xslx(readFile, sheet = 1)
+	hits.bool <- rep(TRUE, nrow(readMat))
+	score.bool <- rep(TRUE, nrow(readMat))
+	pv.bool <- rep(TRUE, nrow(readMat))
+	
+	if(!is.null(hits)) hits.bool[readMat$hits <= hits] <- FALSE
+	if(!is.null(score)) score.bool[readMat$score <= score] <- FALSE
+	if(!is.null(pv)) pv.bool[readMat$adj.pvalue <= pv] <- FALSE
+	
+	return(hits.bool & score.bool & pv.bool)
+}
+
 
 ############################################
 ###                                      ###

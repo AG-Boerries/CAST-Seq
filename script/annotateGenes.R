@@ -188,7 +188,7 @@ geneBarplot <- function(inputFile)
 		"Downstream (<1kb)", "Downstream (1-2kb)", "Downstream (2-3kb)",
 		"Distal Intergenic"))
 		)
-	ggmat$Group <- factor(ggmat$Group, levels = rev(c("off.target", "hom.recomb", "CBS"))
+	ggmat$Group <- factor(ggmat$Group, levels = rev(c("OMT", "HMT", "NBS"))
 		)		
 			
 	p <- ggplot(data=ggmat, aes(x=Regions, y=Percentage.Freq, fill=Group))
@@ -357,7 +357,7 @@ ggmat$Regions <- factor(ggmat$Regions, levels = rev(c("Promoter (2-3kb)", "Promo
 	"Downstream (<1kb)", "Downstream (1-2kb)", "Downstream (2-3kb)",
 	"Distal Intergenic"))
 	)
-ggmat$Group <- factor(ggmat$Group, levels = rev(c("off.target", "hom.recomb", "CBS"))
+ggmat$Group <- factor(ggmat$Group, levels = rev(c("OMT", "HMT", "NBS"))
 	)		
 			
 p <- ggplot(data=ggmat, aes(x=Regions, y=Percentage.Freq, fill=Group))

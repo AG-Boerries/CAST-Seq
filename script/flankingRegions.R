@@ -31,7 +31,7 @@ addFlanking <- function(inputFile, otBed, size)
 	flankMat <- read.delim(otBed, header = FALSE)
 	flankMat[,2] <- flankMat[,2] - size
 	flankMat[,3] <- flankMat[,3] + size
-	flankSeq <- bed2sequence(flankMat)
+	flankSeq <- bed2sequence(flankMat, g = GNM)
 	flankSeq <- flankSeq[[1]]
 	
 	#flankSeq.up <- as.character(readDNAStringSet(flankLeftF))
@@ -41,7 +41,7 @@ addFlanking <- function(inputFile, otBed, size)
 	# LOAD REGIONS OF INTEREST
 	readMat <- read.xlsx(inputFile, sheet = 1)
 
-	sequences <- bed2sequence(readMat)
+	sequences <- bed2sequence(readMat, g = GNM)
 	sequences.rev <- mclapply(sequences, getRevComp, mc.cores = NBCPU)
 
 	###########
@@ -78,7 +78,7 @@ addFlankingFromSq <- function(inputFile, hom.sq, hom.sq2 = NULL)
 	# LOAD REGIONS OF INTEREST
 	readMat <- read.xlsx(inputFile, sheet = 1)
 
-	sequences <- bed2sequence(readMat)
+	sequences <- bed2sequence(readMat, g = GNM)
 	sequences.rev <- mclapply(sequences, getRevComp, mc.cores = NBCPU)
 
 	###########

@@ -4,8 +4,6 @@
 
 ############# DEFINE INPUTS ##################
 CPU=$6
-echo "Number of CPU"
-echo ${CPU}
 
 # $1
 #homeDir=/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/
@@ -32,10 +30,11 @@ mkdir -p ${outDir}
 mkdir -p ${outBedDir}
 
 pos=${dataDir}pos.fa
+pos2=${dataDir}pos2.fa
 neg=${dataDir}neg.fa
 mispriming=${dataDir}mispriming.fa
-#linker=${dataDir}linker.fa
-linker=${dataDir}linker_RC.fa
+#linkerRC=${dataDir}linker.fa
+linkerRC=${dataDir}linker_RC.fa
 hth=${dataDir}headTOhead.fa
 
 adapters=${annotDir}TruSeq4-PE.fa
@@ -57,12 +56,30 @@ do
 	pair1=${dataDir}fastq/${fname}_R1_001.fastq.gz
 	pair2=${dataDir}fastq/${fname}_R2_001.fastq.gz
 
+	# Un tar
+	#gunzip ${dataDir}fastq/${fname}_R1_001.fastq.gz
+	#gunzip ${dataDir}fastq/${fname}_R2_001.fastq.gz
+
+
 	############## Quality control fastq files #####################
-	#fastqc -o ${outDir} --noextract ${pair1}
-	#fastqc -o ${outDir} --noextract ${pair2}
+	fastqc -o ${outDir} --noextract ${pair1}
+	fastqc -o ${outDir} --noextract ${pair2}
 
-	#cp ${pair2} ${outDir}${fname}_merged.fastq.gz
+	################# FLASH PAIRING ###################
+	#echo "START FLASH PAIRING" > ${logFile}
 
+	# FLASH
+	#flash -t ${CPU} -o ${fname} -d ${outDir} -m 10 -M 250 -O ${pair2} ${pair1} > ${logFile}
+
+	# MERGE PAIRED AND UNPAIRED R2
+	# we used notCombined_1.fastq because we used R2 as R1 with flash
+	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
+	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	#gzip ${outDir}${fname}.extendedFrags.fastq
+	#gzip ${outDir}${fname}.notCombined_1.fastq
+	#gzip ${outDir}${fname}.notCombined_2.fastq
+	
+	
 	################# PEAR PAIRING ###################
 	echo "START PEAR PAIRING" > ${logFile}
 
@@ -73,36 +90,12 @@ do
 	# we used notCombined_1.fastq because we used R2 as R1 with flash
 	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
 	cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	
 	gzip ${outDir}${fname}.assembled.fastq
 	gzip ${outDir}${fname}.unassembled.forward.fastq
 	gzip ${outDir}${fname}.unassembled.reverse.fastq
 	
-	#echo "_merged.fastq.gz: " >> ${logFile}
-	#echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
-	
-	
-	################# FLASH PAIRING ###################
-	#echo "START FLASH PAIRING" > ${logFile}
-
-	# FLASH
-	#flash -t ${CPU} -o ${fname} -d ${outDir} -m 15 -M 250 ${pair2} ${pair1}
-
-	# MERGE PAIRED AND UNPAIRED R2
-	# we used notCombined_1.fastq because we used R2 as R1 with flash
-	##cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	#gzip ${outDir}${fname}.extendedFrags.fastq
-	#gzip ${outDir}${fname}.notCombined_1.fastq
-	#gzip ${outDir}${fname}.notCombined_2.fastq
-	
-	echo "_R1_001.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
-	echo "_R2_001.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
-	
 	echo "_merged.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
 	
 	
 	################# FILTER OUT READS > 300bp ################### 
@@ -115,33 +108,57 @@ do
 	echo "START FILTERING" >> ${logFile}
 	# filter 1: find reads that contain the CCR5 sequence before the cut site
 	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
-
+	
 	echo "_pos.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
+
+	# filter 1 part2: find reads that contain the CCR5 sequence before the cut site
+	bbduk.sh -Xmx4g in=${outDir}${fname}_pos_NOmatch.fastq.gz ref=${pos2} outm=${outDir}${fname}_pos2.fastq.gz outu=${outDir}${fname}_pos2_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
+
+	echo "_pos2.fastq.gz: " >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos2.fastq.gz|wc -l)/4|bc >> ${logFile}
+
+	# filter 1 part3: merge selected reads
+	cat ${outDir}${fname}_pos.fastq.gz ${outDir}${fname}_pos2.fastq.gz > ${outDir}${fname}_pos_merged.fastq.gz
+	
+	echo "_pos_merged.fastq.gz: " >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# filter 2: eliminate CCR2 aspecifics
-	bbduk.sh -Xmx4g in=${outDir}${fname}_pos.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
-
+	bbduk.sh -Xmx4g in=${outDir}${fname}_pos_merged.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
+	
 	echo "_Filt2.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	### check filtering
 	#bbduk.sh in=${outDir}${fname}_Filt2.fastq ref=${dataDir}SeqCCR5pos.fa k=25 mm=f edist=2 ow=t    
 
+	# filtering extra steps: check number of sequences with perfect match
+	# pos sequence 1
+	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos_FORCOUNTS.fastq.gz k=25 mm=f edist=0 ow=t rcomp=f
+	echo "POS1: " >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos_FORCOUNTS.fastq.gz|wc -l)/4|bc >> ${logFile}
+	rm ${outDir}${fname}_pos_FORCOUNTS.fastq.gz
+
+	# pos sequence 2
+	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos2} outm=${outDir}${fname}_pos2_FORCOUNTS.fastq.gz k=25 mm=f edist=0 ow=t rcomp=f
+	echo "POS2: " >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos2_FORCOUNTS.fastq.gz|wc -l)/4|bc >> ${logFile}
+	rm ${outDir}${fname}_pos2_FORCOUNTS.fastq.gz
+	
 	############## TRIMMING #########################
 	echo "START TRIMMING" >> ${logFile}
-	#trimming of the linker and eliminate short reads <20+ (ml=20)
-	#rcomp = t
-	bbduk.sh -Xmx4g in=${outDir}${fname}_Filt2.fastq.gz ref=${linker} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=f
-
+	# trimming of the linker and eliminate short reads <20+ (ml=20)
+	bbduk.sh -Xmx4g in=${outDir}${fname}_Filt2.fastq.gz ref=${linkerRC} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=t
+	
 	echo "_trim1.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# trimming of the adapters
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim1.fastq.gz ref=${adapters} out=${outDir}${fname}_trim2.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20
-
+	
 	echo "_trim2.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	############
 	# CRISPRESSO
@@ -149,6 +166,9 @@ do
 
 	# filter 3: find reads that not contain the CCR5 sequence after the cut site
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${neg} outm=${outDir}${fname}_Filt3_pos.fastq.gz outu=${outDir}${fname}_Filt3_neg.fastq.gz k=25 mm=f hdist=3 edist=2 ow=t rcomp=f
+
+	echo "_Filt3_pos.fastq.gz: " >> ${logFile}
+	echo $(zcat ${outDir}${fname}_Filt3_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# run crispresso with fastq.gz
 	#source activate py27
@@ -160,7 +180,7 @@ do
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30
 
 	echo "_trim3.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	######### FINAL filter ############ 
 	echo "START FINAL FILTER" >> ${logFile}
@@ -170,7 +190,7 @@ do
 
 	############## check quality #########################
 	fastqc -o ${outDir} --noextract ${outDir}${fname}_merged.fastq.gz
-	#fastqc -o ${outDir} --noextract ${outDir}${fname}_merged_filt.fastq.gz
+	fastqc -o ${outDir} --noextract ${outDir}${fname}_merged_filt.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_pos.fastq
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_Filt2.fastq
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_trim1.fastq
@@ -181,12 +201,11 @@ do
 
 	############## ALIGNMENT ###########################
 	##bowtie alignment of trimmed but not collapsed seq##
-	echo ${annotDir}bowtie2Index/genome
 	bowtie2 -x ${annotDir}bowtie2Index/genome -U ${outDir}${fname}_trim3.fastq.gz --very-sensitive -p ${CPU} | samtools view -bS -> ${outDir}${fname}_Alignment.bam
 
 	echo "_Alignment.bam: " >> ${logFile}
 	echo $(samtools view -c -F 260 ${outDir}${fname}_Alignment.bam) >> ${logFile}
-	
+
 	### eliminate mapq < 15 AND select mapq < 15 for repeat masker
 	samtools view -h -b -q 15 -U ${outDir}${fname}_lowQ.bam ${outDir}${fname}_Alignment.bam > ${outDir}${fname}_mapqfiltered.bam
 	samtools bam2fq -F 260 ${outDir}${fname}_lowQ.bam | seqtk seq -A > ${outDir}${fname}_lowQ.fa
@@ -199,14 +218,12 @@ do
 	echo "_AlignmentSort.bam: " >> ${logFile}
 	echo $(samtools view -c -F 260 ${outDir}${fname}_AlignmentSort.bam) >> ${logFile}
 	
-	
 	#### convert from bam to bed
 	bedtools bamtobed -i ${outDir}${fname}_AlignmentSort.bam > ${outBedDir}${fname}_Alignment.bed
-	#convert2bed --input=bam --output=bed < ${outDir}${fname}_AlignmentSort.bam > ${outBedDir}${fname}_Alignment_V2.bed
+	#convert2bed --input=bam --output=bed < ${outDir}${fname}_AlignmentSort.bam > ${outDir}${fname}_Alignment_V2.bed
 
 	echo "_Alignment.bed: " >> ${logFile}
 	echo $(wc -l ${outBedDir}${fname}_Alignment.bed) >> ${logFile}
-
 
 	###############
 	# REPEAT MASKER
@@ -218,8 +235,6 @@ do
 	bedtools bamtobed -i ${outDir}${fname}_lowQ.bam > ${bedTMP}
 	bedtools shuffle -i ${bedTMP} -g ${chrSize} > ${shuffleBedTMP}
 	bedtools getfasta -fi ${genomeFasta} -bed ${shuffleBedTMP} -fo ${outDir}${fname}_lowQ.shuffle.fa
-	
-
 
 done
 

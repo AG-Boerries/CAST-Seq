@@ -7,10 +7,10 @@
 ###                                      ###
 ############################################
 
-chrPlot <- function(inputF, outputF, clusters = NULL, score = NULL, pv = NULL)
+chrPlot <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 {
 	readMat <- read.xlsx(inputF, sheet = 1)
-	if(!is.null(clusters)) readMat <- readMat[readMat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat <- readMat[readMat$hits > hits, ]
 	if(!is.null(score)) readMat <- readMat[readMat$score > score, ]
 	if(!is.null(pv)) readMat <- readMat[readMat$adj.pvalue < pv, ]
 
@@ -26,9 +26,9 @@ chrPlot <- function(inputF, outputF, clusters = NULL, score = NULL, pv = NULL)
 		
 		# DEFINE COLORS
 		chrColor <- rep(NA, length(groups))
-		chrColor[groups == "off.target"] <- "red"	
-		chrColor[groups == "hom.recomb"] <- "blue"	
-		chrColor[groups == "CBS"] <- "grey50"		
+		chrColor[groups == "OMT"] <- "red"	
+		chrColor[groups == "HMT"] <- "blue"	
+		chrColor[groups == "NBS"] <- "grey50"		
 	
 		#plotDefaultPlotParams(plot.type=1)
 		plot.params <- getDefaultPlotParams(plot.type=1)
@@ -46,10 +46,10 @@ chrPlot <- function(inputF, outputF, clusters = NULL, score = NULL, pv = NULL)
 	
 }
 
-chrPlotAside <- function(inputF, outputP, clusters = NULL, score = NULL, pv = NULL)
+chrPlotAside <- function(inputF, outputP, hits = NULL, score = NULL, pv = NULL)
 {
 	readMat <- read.xlsx(inputF, sheet = 1)
-	if(!is.null(clusters)) readMat <- readMat[readMat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat <- readMat[readMat$hits > hits, ]
 	if(!is.null(score)) readMat <- readMat[readMat$score > score, ]
 	if(!is.null(pv)) readMat <- readMat[readMat$adj.pvalue < pv, ]
 
@@ -58,7 +58,7 @@ chrPlotAside <- function(inputF, outputP, clusters = NULL, score = NULL, pv = NU
 		bed <- bed[order(bed$group), ]
 		groups <- bed$group
 	
-		groups.color <- c("off.target" = "red", "hom.recomb" = "blue", "CBS" = "grey")
+		groups.color <- c("OMT" = "red", "HMT" = "blue", "NBS" = "grey")
 		
 		#plotDefaultPlotParams(plot.type=1)
 		plot.params <- getDefaultPlotParams(plot.type=1)

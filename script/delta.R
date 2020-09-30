@@ -4,6 +4,10 @@
 toNUM <- function(x) as.numeric(levels(x))[x]
 
 
+
+# TO DO: get DELTA, use grange to intersect ots and sites, remove everything +/- otsD of ots
+
+
 getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 {
 	# inputFile: bed file (output from fastq alignment pipeline)
@@ -12,22 +16,10 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 	inputName <- gsub(".bed$", "", inputFile)
 	
 	# read the bed file
-	bed <-  as.data.frame(read.table(inputFile,header=FALSE,sep="\t", stringsAsFactors=FALSE, quote="", fill = TRUE))
+	bed.raw <-  as.data.frame(read.table(inputFile, header=FALSE,sep="\t", stringsAsFactors=FALSE, quote="", fill = TRUE))
 	
-	# Remove ON-target reads
-	if(!is.null(otsF)){
-		ots <- read.delim(otsF, header = FALSE)
-		chr <- as.character(ots[,1])
-		start <- as.numeric(ots[,2])
-		end <- as.numeric(ots[,3])
-		strand <- as.character(ots[,6])
-
-		idx <- (bed[,1] == chr) & (bed[,6] == strand) &
-			( (bed[,2] >= (start - otsD) & bed[,2] <= (end + otsD)) | (bed[,3] >= (start - otsD) & bed[,3] <= (end + otsD)) )
-		print(sum(idx))
-		bed <- bed[!idx, ]
-	}
-
+	bed <- bed.raw	
+	
 	# merge identical coordinates
 	print("Deduplicate")
 	
@@ -114,7 +106,8 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 		delta <- c(delta, chrDelta)
 		}
 
-	pdf(paste0(inputName, "_delta_density.pdf"))
+	# Plot delta density
+	pdf(paste0(inputName, "_delta_density_RAW.pdf"))
 	#tiff(paste0(inputName, "_delta_density.tiff"), units="in", width=5, height=5, res = 800)
 	#png(paste0(inputName, "_delta_density.png"), units="px", width=1600, height=1600, res=300)
 	plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
@@ -122,7 +115,148 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 
 	bed5 <- cbind(bed4, delta)
 	colnames(bed5) <- c("chromosome", "start", "end", "strand", "read", "delta")
+	write.table(bed5, paste0(inputName, "_delta_RAW.bed"), quote = FALSE,  sep = "\t", row.names = FALSE)
+	
+	
+	#################################
+	# REMOVE READS CLOSE TO ON TARGET
+	
+	# Remove ON-target reads OLD
+	#if(!is.null(otsF)){
+    #	ots <- read.delim(otsF, header = FALSE)
+	#	chr <- as.character(ots[,1])
+	#	start <- as.numeric(ots[,2])
+	#	end <- as.numeric(ots[,3])
+	#	strand <- as.character(ots[,6])
+#
+#		idx <- (bed[,1] == chr) & (bed[,6] == strand) &
+#			( (bed[,2] >= (start - otsD) & bed[,2] <= (end + otsD)) | (bed[,3] >= (start - otsD) & bed[,3] <= (end + otsD)) )
+#		print(sum(idx))
+#		bed <- bed[!idx, ]
+#	}
+	
+	
+	# Remove ON-target reads NEW
+	if(!is.null(otsF)){
+		bed <- bed.raw
+		
+		print(paste0("Remove ON-target reads +/- ", otsD, "bp"))
+		ots <- read.delim(otsF, header = FALSE)
+		
+		gr1 <- makeGRangesFromDataFrame(bed, seqnames.field = "V1",
+			start.field = "V2", end.field = "V3", strand = "V6",
+			keep.extra.columns = FALSE, ignore.strand = FALSE)
+			
+		gr2 <- makeGRangesFromDataFrame(ots, seqnames.field = "V1",
+			start.field = "V2", end.field = "V3", strand = "V6",
+			keep.extra.columns = FALSE, ignore.strand = FALSE)
+	
+		gr.ovl <- findOverlaps(query = gr1, subject = gr2, type = "any", maxgap = otsD, ignore.strand=TRUE) # REMOVE BOTH STRANDS !!!
+		if(length(queryHits(gr.ovl)) != 0){
+			bed <- bed[-queryHits(gr.ovl), ]	
+			}
+	print(paste0(" Remove +/- ", otsD))
+	print(paste0("bed.raw: ", nrow(bed.raw)))
+	print(paste0("bed (wo +/- ", otsD, "): ", nrow(bed)))
+	
+	
+	# merge identical coordinates
+	print("Deduplicate")
+	
+	bed.plus <- bed[bed$V6 == "+", ]
+	bed.minus <- bed[bed$V6 == "-", ]
+
+	start.cutoff <- 3
+	end.cutoff <- 3
+
+	chr <- unique(bed.minus$V1)
+	bed.minus.chr <- mclapply(chr, function(i){
+		tempbed <- bed.minus[bed.minus$V1 == i, c(1:3, 6)]
+		tempbed <- tempbed[order(tempbed$V2, tempbed$V3), ]
+
+		bedCD <- tempbed[1,]
+		bedCD.reads <- 1
+		
+		if(nrow(tempbed) > 1){
+			start.diff <- c(0, tempbed$V2[2:length(tempbed$V2)] - tempbed$V2[1:(length(tempbed$V2)-1)])
+			end.diff <- c(0, tempbed$V3[2:length(tempbed$V3)] - tempbed$V3[1:(length(tempbed$V3)-1)])
+
+			for(n in 2:nrow(tempbed)) # start for loop for each row
+				{ 
+				if(start.diff[n] < start.cutoff & abs(end.diff[n]) < end.cutoff){
+					bedCD.reads[length(bedCD.reads)] <- bedCD.reads[length(bedCD.reads)] + 1
+					}else{
+						bedCD <- rbind(bedCD, tempbed[n,])
+						bedCD.reads <- c(bedCD.reads, 1)
+						}	
+				}
+			}
+		
+		bedCD <- cbind(bedCD, reads = bedCD.reads)
+		rownames(bedCD) <- NULL	
+		colnames(bedCD) <- c("chromosome", "start", "end", "strand", "read")	
+		return(bedCD)
+		}, mc.cores = NBCPU
+		)
+
+	chr <- unique(bed.plus$V1)
+	bed.plus.chr <- mclapply(chr, function(i){
+		tempbed <- bed.plus[bed.plus$V1 == i, c(1:3, 6)]
+		tempbed <- tempbed[order(tempbed$V2, tempbed$V3), ]
+
+		bedCD <- tempbed[1,]
+		bedCD.reads <- 1
+		if(nrow(tempbed) > 1){
+			start.diff <- c(0, tempbed$V2[2:length(tempbed$V2)] - tempbed$V2[1:(length(tempbed$V2)-1)])
+			end.diff <- c(0, tempbed$V3[2:length(tempbed$V3)] - tempbed$V3[1:(length(tempbed$V3)-1)])
+
+			for(n in 2:nrow(tempbed)) # start for loop for each row
+				{ 
+				if(start.diff[n] < start.cutoff & abs(end.diff[n]) < end.cutoff){
+					bedCD.reads[length(bedCD.reads)] <- bedCD.reads[length(bedCD.reads)] + 1
+					}else{
+						bedCD <- rbind(bedCD, tempbed[n,])
+						bedCD.reads <- c(bedCD.reads, 1)
+						}	
+				}
+			}
+		bedCD <- cbind(bedCD, reads = bedCD.reads)
+		rownames(bedCD) <- NULL	
+		colnames(bedCD) <- c("chromosome", "start", "end", "strand", "read")	
+		return(bedCD)
+		}, mc.cores = NBCPU
+		)
+
+	bed2 <- do.call(rbind, c(bed.minus.chr, bed.plus.chr))
+
+	# change start for minus strand
+	bed3 <- bed2   # create a copy of the bed file in bed2
+	bed3[bed3[,4]== "-",2] <- bed3[bed3[,4]== "-",3] # if the strand (col 6) is negative copy the position in col 3 to col 2 
+	bed3[,3] <- bed3[,2] # change col 3 to initial nucleotide 
+
+	bed4 <- bed3[order(bed3[,1],bed3[,2],decreasing=F),]  # create bed 4 and reorder the start site
+
+	# Calculate delta
+	print("Calculate delta")
+	delta <- c()   # empty object to fill during the for loop
+	for(i in unique(bed4[,1])){ # start for loop for each chomosome
+		tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
+		chrDelta <- as.numeric(tempbed[1,2])
+		if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
+		delta <- c(delta, chrDelta)
+		}
+	
+	
+	}
+	# Plot delta density
+	pdf(paste0(inputName, "_delta_density.pdf"))
+	plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
+	dev.off()
+
+	bed5 <- cbind(bed4, delta)
+	colnames(bed5) <- c("chromosome", "start", "end", "strand", "read", "delta")
 	write.table(bed5, paste0(inputName, "_delta.bed"), quote = FALSE,  sep = "\t", row.names = FALSE)
+	
 }
 
 
@@ -187,6 +321,7 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 			}, mc.cores = 1
 			)
 
+		chr <- unique(bed.plus$V1)
 		bed.plus.chr <- mclapply(chr, function(i){
 			tempbed <- bed.plus[bed.plus$V1 == i, c(1:4)]
 			tempbed <- tempbed[order(tempbed$V2, tempbed$V3), ]
@@ -262,20 +397,42 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 
 deltaDensity <- function(deltaF, otsF, distance)
 {
-	ots <- read.delim(otsF, header = FALSE)
-	chr <- as.character(ots[,1])
-	start <- as.numeric(ots[,2])
-	end <- as.numeric(ots[,3])
-
 	readMat <- read.delim(deltaF)
-	#idx <- (readMat[,1] == chr) & (readMat[,2] >= (start - distance)) & (readMat[,3] <= (end + distance))
-	idx <- (readMat[,1] == chr) &
-		( (readMat[,2] >= (start - distance) & readMat[,2] <= (end + distance)) | (readMat[,3] >= (start - distance) & readMat[,3] <= (end + distance)) )
 
-	readMat.sub <- readMat[!idx, ]
+	ots <- read.delim(otsF, header = FALSE)
+	#chr <- as.character(ots[,1])
+	#start <- as.numeric(ots[,2])
+	#end <- as.numeric(ots[,3])
+
+	#idx <- (readMat[,1] == chr) & (readMat[,2] >= (start - distance)) & (readMat[,3] <= (end + distance))
+	#idx <- (readMat[,1] == chr) &
+	#	( (readMat[,2] >= (start - distance) & readMat[,2] <= (end + distance)) | (readMat[,3] >= (start - distance) & readMat[,3] <= (end + distance)) )
+	#readMat.sub <- readMat[!idx, ]
+
+	
+	# Remove ON-target reads NEW
+	if(!is.null(otsF)){
+		#print(paste0("Remove ON-target reads +/- ", otsD, "bp"))
+		ots <- read.delim(otsF, header = FALSE)
+		
+		gr1 <- makeGRangesFromDataFrame(readMat, seqnames.field = "chromosome",
+			start.field = "start", end.field = "end",
+			keep.extra.columns = FALSE, ignore.strand = TRUE)
+			
+		gr2 <- makeGRangesFromDataFrame(ots, seqnames.field = "V1",
+			start.field = "V2", end.field = "V3",
+			keep.extra.columns = FALSE, ignore.strand = TRUE)
+	
+		gr.ovl <- findOverlaps(query = gr1, subject = gr2, type = "any", maxgap = otsD)
+		if(length(queryHits(gr.ovl)) != 0){
+			readMat.sub <- readMat[-queryHits(gr.ovl), ]
+		}else readMat.sub <- readMat
+	
+	}else readMat.sub <- readMat
+
 
 	pdf(gsub(".bed", "_density_minus_target.pdf", deltaF))
-	plot(density(log10(readMat.sub[, "delta"])), main = "", xlab = "log10(read base distance)")
+	plot(density(log10(readMat.sub[, "delta"]+1)), main = "", xlab = "log10(read base distance)")
 	dev.off()
 }
 
@@ -283,7 +440,28 @@ deltaDensity <- function(deltaF, otsF, distance)
 
 if(FALSE)
 {
+NBCPU <- 1
 
+# TEST getDelta
+inputFile <- file.path("/home/gandrieux/offTargets/Giando/test/Rev-196-1_S4_L001_Alignment.bed")
+otsF <- file.path("/home/gandrieux/offTargets/Giando/pipelineGit/samples/HBG1Rev_196/data/ots.bed")
+otsD <- 50
+getDelta(inputFile, otsF, otsD)
+
+deltaF <- file.path("/home/gandrieux/offTargets/Giando/test/Rev-196-1_S4_L001_Alignment_delta.bed")
+deltaDensity(deltaF, otsF, distance)
+
+
+# TEST getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
+inputFile <- "/home/gandrieux/offTargets/Giando/test/deltaShuffle/Rev-UT-2_S6_L001_Alignment_delta.bed" 
+distance <- 1500
+genome.size <- file.path("/home/gandrieux/offTargets/Giando/pipelineGit/annotations/human", "chrom.sizes")
+nb <- 2
+getDeltaShuffle(inputFile, nb, distance, genome.size)
+
+
+
+############################
 # new deduplication
 setwd("/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/results/")
 bed <-  as.data.frame(read.table("G3_cat_Alignment.bed",header=FALSE,sep="\t", stringsAsFactors=FALSE, quote="", fill = TRUE))

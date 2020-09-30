@@ -10,18 +10,19 @@ if(!file.exists(file.path(resultD, paste0(sampleName, "_Alignment.bed")))){
 ################     FASTQ ALIGNMENT    ################ 
 print("################     FASTQ ALIGNMENT    ################")
 
-
 fastqAln(functionstring=paste0("sh ", file.path(scriptD,"fastq_aln.sh")),
 	homeFolder = homeD,
 	annotFolder = annotD,
 	sampleFolder = sampleDname,
 	testSample = sampleName,
-	utSample = controlName
-	)
+	utSample = controlName,
+	cpu = NBCPU
+	)	
+	
 }
 
-################     DELTA AND CLUSTERS    ################ 
-print("################     DELTA AND CLUSTERS    ################ ")
+################     DELTA AND HITS    ################ 
+print("################     DELTA AND HITS    ################ ")
 # bed files (test and control) should be available in resultD
 
 # test sample
@@ -37,12 +38,12 @@ getDelta(controlBed, otsBed, otsDistance)
 getDeltaShuffle(gsub(".bed$", "_delta.bed", controlBed), nb = 10, distance = distance.cutoff, genome.size = myGenome.size)		
 
 # Density without on-target sites
-deltaDensity(gsub(".bed$", "_delta.bed", sampleBed), otsBed, surrounding_size)
-deltaDensity(gsub(".bed$", "_delta.bed", controlBed), otsBed, surrounding_size)
+#deltaDensity(gsub(".bed$", "_delta.bed", sampleBed), otsBed, surrounding_size)
+#deltaDensity(gsub(".bed$", "_delta.bed", controlBed), otsBed, surrounding_size)
 	  	  
-# run cluster analysis
-getCluster(gsub(".bed$", "_delta.bed", sampleBed), distance.cutoff)
-getCluster(gsub(".bed$", "_delta.bed", controlBed), distance.cutoff)
+# run hits analysis
+getHits(gsub(".bed$", "_delta.bed", sampleBed), distance.cutoff)
+getHits(gsub(".bed$", "_delta.bed", controlBed), distance.cutoff)
 
 ################     TEST VS. CONTROL ENRICHMENT    ################
 print("################     TEST VS. CONTROL ENRICHMENT    ################")
@@ -50,10 +51,10 @@ print("################     TEST VS. CONTROL ENRICHMENT    ################")
 nbReads.sample <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz"))))
 nbReads.control <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz"))))
 
-doEnrichment(gsub(".bed$", "_cluster.bed", sampleBed), gsub(".bed$", "_cluster.bed", controlBed),
+doEnrichment(gsub(".bed$", "_hits.bed", sampleBed), gsub(".bed$", "_hits.bed", controlBed),
 			 nbReads.sample, nbReads.control, w, myGenome.size)
 	
-doEnrichment(gsub(".bed$", "_cluster.bed", controlBed), gsub(".bed$", "_cluster.bed", sampleBed),
+doEnrichment(gsub(".bed$", "_hits.bed", controlBed), gsub(".bed$", "_hits.bed", sampleBed),
 			 nbReads.control, nbReads.sample, w, myGenome.size)
 	
 # ADD AVERAGE MAPQ
@@ -74,7 +75,7 @@ guideD <- resultD
 getGuideAlignmentDual(inputF = file.path(resultD, paste0(sampleName, "_w", w, ".xlsx")),
 				  guideLeft = refSeq.left, guideRight = refSeq.right,
 				  alnFolder = guideD,
-				  gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens
+				  gnm = GNM
 				  )
 #file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
 				  
@@ -94,7 +95,7 @@ if(!file.exists(file.path(randomD, paste0(randomName, ".bed")))){
 	getGuideAlignmentDual(inputF = file.path(randomD, paste0(randomName, ".bed")),
 					  guideLeft = refSeq.left, guideRight = refSeq.right,
 					  alnFolder = randomD,
-					  gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens
+					  gnm = GNM
 					  )	
 	#file.remove(list.files(randomD, pattern = "_TMP.txt", full.names = TRUE))
 	}
@@ -105,6 +106,13 @@ assignPV(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
 	
 # ASSIGN THE BEST COMBINATION
 assignBestCombination(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")))	
+
+# filt name
+filtName <- ""
+if(!is.null(hits.cutoff)) filtName <- c(filtName, "hits", hits.cutoff)
+if(!is.null(pv.cutoff)) filtName <- c(filtName, "pv", pv.cutoff)
+if(!is.null(score.cutoff)) filtName <- c(filtName, "score", score.cutoff)
+filtName <- paste0(filtName, collapse = "_")	
 
 
 ################     FLANKING REGIONS    ################ 
@@ -127,15 +135,17 @@ assignGroupsTALEN(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK
 			 
 groupSummary(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
 	file.path(guideD, paste0(sampleName, "_w", w, "_group_summary.xlsx")),
-	clusters = NULL,
+	hits = NULL,
 	score = NULL, pv = NULL
 	)	
 	
+if(filtName != ""){		
 groupSummary(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-	file.path(guideD, paste0(sampleName, "_w", w, "_group_summary_clust1_pv0.05.xlsx")),
-	clusters = 1,
-	score = NULL, pv = pv.cutoff
-	)			 
+	file.path(guideD, paste0(sampleName, "_w", w, "_group_summary_", filtName, ".xlsx")),
+	hits = hits.cutoff,
+	score = score.cutoff, pv = pv.cutoff
+	)	
+}		 
 
 ################     GENE ANNOTATION    ################ 
 print("################     GENE ANNOTATION    ################ ")
@@ -158,155 +168,40 @@ addGenesTALEN(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GRO
 	genes.width = 0, site.width = 100000)
 
 
-################     ONCOGENE ANNOTATION    ################ 
-#print("################     ONCOGENE ANNOTATION    ################")
-#addOnco(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")), oncoEntrez, onco.width)
+################     RETURN FINAL XLSX FILE    ################ 
+print("################     RETURN FINAL XLSX FILE    ################")
+finalize(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")))	
 
 
 ################     HISTONE MARKS    ################ 
-print("################     HISTONE MARKS    ################ ")
+#print("################     HISTONE MARKS    ################ ")
 
-histoneForestPlot(inputF = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	randomF = file.path(randomD, paste0(randomName, ".bed")),
-	histFiles = histoneFiles)
+#histoneForestPlot(inputF = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+#	randomF = file.path(randomD, paste0(randomName, ".bed")),
+#	histFiles = histoneFiles)
 
 ################     CHR PLOT    ################ 
+if(filtName != ""){	
 chrPlot(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	file.path(guideD, paste0(sampleName, "_w", w, "_aln_clust1_pv0.05_chrPlot.pdf")), clusters = 1, score = NULL, pv = pv.cutoff)
+	file.path(guideD, paste0(sampleName, "_w", w, "_aln_", filtName, "_chrPlot.pdf")),
+	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
 chrPlotAside(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	file.path(guideD, paste0(sampleName, "_w", w, "_aln_clust1_pv0.05_chrPlot")), clusters = 1, score = NULL, pv = pv.cutoff)
-
-
+	file.path(guideD, paste0(sampleName, "_w", w, "_aln_", filtName, "_chrPlot")),
+	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
 }
 
 
-runPipelineOverlap <- function()
-{
-
-##########################################################################################
-############                           RUN PIPELINE                           ############
-##########################################################################################
 
 
-##########################################################################################
-############                DESIGNER NUCLEASE TREATED SAMPLE                  ############
-##########################################################################################
-
-################     GUIDE SEQ ALIGNMENT    ################ 
-print("################     GUIDE SEQ ALIGNMENT    ################")
-
-# DO GUIDE ALIGNMENT ON REAL SEQUENCES
-guideD <- resultD
-getGuideAlignmentDual(inputF = file.path(ovlD, paste0(sampleName, "_w", w, ".xlsx")),
-				  guideLeft = refSeq.left, guideRight = refSeq.right,
-				  alnFolder = ovlD
-				  )			  
-				  
-# GENERATE RANDOM SEQUENCE BED
-randomD <- file.path(sampleD, "results", "random")
-dir.create(randomD, showWarnings = FALSE)
-randomName <- paste0("random_w",w)
-
-# ASSIGN PVALUE FOR EVERY SINGLE COMBINATION
-assignPV(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-	file.path(randomD, paste0(randomName, "_aln_stat.xlsx")))
-	
-# ASSIGN THE BEST COMBINATION
-assignBestCombination(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")))	
-
-
-################     FLANKING REGIONS    ################ 
-print("################     FLANKING REGIONS    ################ ")
-# REAL SEQUENCES
-addFlanking(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")), otsBed, flankingSize)
-
-################     DEFINE GROUPS    ################ 
-print("################     DEFINE GROUPS    ################ ")
-assignGroupsTALEN(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK.xlsx")),
-			 file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-			 otsBed,
-			 pv.cutoff)
-			 
-groupSummary(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-	file.path(ovlD, paste0(sampleName, "_w", w, "_group_summary.xlsx")),
-	clusters = NULL,
-	score = NULL, pv = NULL
-	)	 
-
-
-################     GENE ANNOTATION    ################ 
-print("################     GENE ANNOTATION    ################ ")
-# Annotation
-annotateGeneTALEN(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")))
-annotateGeneTALEN(file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")))
-
-# Barplot per group
-geneBarplot(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")))
-
-# Forest plot per group
-geneForestPlot(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-			   file.path(randomD, paste0(randomName, "_aln_stat_FLANK_GENES.xlsx")))
-
-################     ALL GENES WITHIN 100KB ANNOTATION    ################ 
-print("################     ALL GENES WITHIN 100KB ANNOTATION    ################")
-addGenesTALEN(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	oncoFile = oncoEntrez,
-	genes.width = 0, site.width = 100000)
-
-################     ONCOGENE ANNOTATION    ################ 
-#print("################     ONCOGENE ANNOTATION    ################")
-#addOnco(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")), oncoEntrez, onco.width)
-
-
-################     HISTONE MARKS    ################ 
-print("################     HISTONE MARKS    ################ ")
-
-histoneForestPlot(inputF = file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	randomF = file.path(randomD, paste0(randomName, ".bed")),
-	histFiles = histoneFiles)
-
-################     SCORING SYSTEM    ################ 
-#print("################     SCORING SYSTEM    ################")
-
-#addScore(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO.xlsx")),
-#	file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-#	pv.cutoff,
-#	otsBed,
-#	surrounding_size)
-	
-#scoreDensity(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")))	
-
-
+#if(filtName != ""){	
 ################     CHR PLOT    ################ 
-chrPlot(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	file.path(ovlD, paste0(sampleName, "_w", w, "_aln_chrPlot.pdf")), clusters = NULL, score = NULL, pv = NULL)
-chrPlotAside(file.path(ovlD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	file.path(ovlD, paste0(sampleName, "_w", w, "_aln_chrPlot")), clusters = NULL, score = NULL, pv = NULL)
-
-
-
-
-}
-
-
-
-
-
-if(FALSE)
-{
-
-################     SCORING SYSTEM    ################ 
-print("################     SCORING SYSTEM    ################")
-
-addScoreTALEN(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO.xlsx")),
-	file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-	pv.cutoff,
-	otsBed,
-	surrounding_size)
-	
-scoreDensity(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")))	
-
-
+#circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+#				 zoom.size = 50000, label = FALSE, 
+#                bestScore.cutoff = 9, bestFlank.cutoff = 25,
+#                 gene.bed = NULL, ots.bed = FALSE, 
+#                outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize.pdf")),
+#                species = "hg38")
+#}
 
 
 
@@ -314,36 +209,28 @@ scoreDensity(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROU
 ############                        UNTREATED SAMPLE                          ############
 ##########################################################################################
 
+
+
 ################     GUIDE SEQ ALIGNMENT    ################ 
 print("################     GUIDE SEQ ALIGNMENT    ################")
 
 # DO GUIDE ALIGNMENT ON REAL SEQUENCES
 guideD <- resultD
-getGuideAlignment(inputF = file.path(resultD, paste0(controlName, "_w", w, ".xlsx")),
-				  guide = refSeq,
-				  alnFolder = guideD
+getGuideAlignmentDual(inputF = file.path(resultD, paste0(controlName, "_w", w, ".xlsx")),
+				  guideLeft = refSeq.left, guideRight = refSeq.right,
+				  alnFolder = guideD,
+				  gnm = GNM
 				  )
-file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
+#file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
 				  
-# PLOT GUIDE ALIGNMENT
-guidePlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-		  file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap.pdf")),
-		  score = NULL, pv = NULL, ref = refSeq)# ALL
-		  
-guidePlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-		  file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_clust1_pv0.05.pdf")),
-		  clusters = 1,
-		  score = NULL, pv = pv.cutoff, ref = refSeq)# Significant		  
-	  
-# LOGO PLOT
-logoPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-		 file.path(guideD, paste0(controlName, "_w", w, "_aln_logo.pdf")),
-		 score = NULL, pv = NULL, ref = refSeq)# ALL
 
-logoPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-		 file.path(guideD, paste0(controlName, "_w", w, "_aln_logo_clust1_pv0.05.pdf")),
-		 clusters = 1,
-		 score = NULL, pv = pv.cutoff, ref = refSeq)# Significant
+# ASSIGN PVALUE FOR EVERY SINGLE COMBINATION
+assignPV(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
+	file.path(randomD, paste0(randomName, "_aln_stat.xlsx")))
+	
+# ASSIGN THE BEST COMBINATION
+assignBestCombination(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")))	
+
 
 ################     FLANKING REGIONS    ################ 
 print("################     FLANKING REGIONS    ################ ")
@@ -353,45 +240,30 @@ addFlanking(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")), o
 
 ################     DEFINE GROUPS    ################ 
 print("################     DEFINE GROUPS    ################ ")
-
-assignGroups(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK.xlsx")),
+assignGroupsTALEN(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK.xlsx")),
 			 file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
 			 otsBed,
 			 pv.cutoff)
 			 
 groupSummary(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
 	file.path(guideD, paste0(controlName, "_w", w, "_group_summary.xlsx")),
-	clusters = NULL,
+	hits = NULL,
 	score = NULL, pv = NULL
 	)	
 	
+if(filtName != ""){		
 groupSummary(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-	file.path(guideD, paste0(controlName, "_w", w, "_group_summary_clust1_pv0.05.xlsx")),
-	clusters = 1,
-	score = NULL, pv = pv.cutoff
-	)			 
-			 
-################     PIE CHARTS    ###############
-print("################     PIE CHARTS    ###############")
-piePlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-	    file.path(guideD, paste0(controlName, "_w", w, "_aln_piechart.pdf")),
-	    score = NULL, pv = NULL)
-	    
-piePlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-	    file.path(guideD, paste0(controlName, "_w", w, "_aln_piechart_clust1_pv0.05.pdf")),
-	    clusters = 1,
-	    score = NULL, pv = pv.cutoff)	    
-
-
-################     MISMATCHES / INDEL PERCENTAGE BARPLOT    ###############
-print("################     MISMATCHES / INDEL PERCENTAGE BARPLOT    ###############")
-pcBarplot(file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap.xlsx")))# ALL
-pcBarplot(file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_clust1_pv0.05.xlsx")))# Significant
+	file.path(guideD, paste0(controlName, "_w", w, "_group_summary_", filtName, ".xlsx")),
+	hits = hits.cutoff,
+	score = score.cutoff, pv = pv.cutoff
+	)	
+}		 
 
 ################     GENE ANNOTATION    ################ 
 print("################     GENE ANNOTATION    ################ ")
 # Annotation
-annotateGene(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")))
+annotateGeneTALEN(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")))
+annotateGeneTALEN(file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")))
 
 # Barplot per group
 geneBarplot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")))
@@ -400,36 +272,48 @@ geneBarplot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROU
 geneForestPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
 			   file.path(randomD, paste0(randomName, "_aln_stat_FLANK_GENES.xlsx")))
 
-################     ONCOGENE ANNOTATION    ################ 
-print("################     ONCOGENE ANNOTATION    ################")
-addOnco(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")), oncoEntrez, onco.width)
+################     ALL GENES WITHIN 100KB ANNOTATION    ################ 
+print("################     ALL GENES WITHIN 100KB ANNOTATION    ################")
+addGenesTALEN(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	oncoFile = oncoEntrez,
+	geneMat = geneMat,
+	genes.width = 0, site.width = 100000)
+
+
+################     RETURN FINAL XLSX FILE    ################ 
+print("################     RETURN FINAL XLSX FILE    ################")
+finalize(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")))	
 
 
 ################     HISTONE MARKS    ################ 
-print("################     HISTONE MARKS    ################ ")
+#print("################     HISTONE MARKS    ################ ")
 
-histoneForestPlot(inputF = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-	randomF = file.path(randomD, paste0(randomName, ".bed")),
-	histFiles = histoneFiles)
-
-
-################     SCORING SYSTEM    ################ 
-print("################     SCORING SYSTEM    ################")
-
-addScore(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO.xlsx")),
-	file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-	pv.cutoff,
-	otsBed,
-	surrounding_size)
-	
-scoreDensity(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")))	
-
+#histoneForestPlot(inputF = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+#	randomF = file.path(randomD, paste0(randomName, ".bed")),
+#	histFiles = histoneFiles)
 
 ################     CHR PLOT    ################ 
-chrPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
-	file.path(guideD, paste0(controlName, "_w", w, "_aln_clust1_pv0.05_chrPlot.pdf")), clusters = 1, score = NULL, pv = pv.cutoff)
-chrPlotAside(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
-	file.path(guideD, paste0(controlName, "_w", w, "_aln_clust1_pv0.05_chrPlot")), clusters = 1, score = NULL, pv = pv.cutoff)
+if(filtName != ""){	
+chrPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	file.path(guideD, paste0(controlName, "_w", w, "_aln_", filtName, "_chrPlot.pdf")),
+	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
+chrPlotAside(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	file.path(guideD, paste0(controlName, "_w", w, "_aln_", filtName, "_chrPlot")),
+	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
+}
+
+
+
+
+#if(filtName != ""){	
+################     CHR PLOT    ################ 
+#circlizePipeline(siteFile = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+#				 zoom.size = 50000, label = FALSE, 
+#                 bestScore.cutoff = 9, bestFlank.cutoff = 25,
+#                 gene.bed = NULL, ots.bed = FALSE, 
+#                 outFile = file.path(guideD, paste0(controlName, "_w", w, "_circlize.pdf")),
+#                 species = "hg38")
+#}
 
 
 
@@ -438,15 +322,44 @@ chrPlotAside(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GRO
 ############                  OVERALL GENOMIC INSTABILITY                     ############
 ##########################################################################################
 
-getOGI(rawFastq.de = file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz")),
-	filtFastq.de = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_pos.fastq.gz")),
-	groupF.de = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
-	rawFastq.u = file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz")),
-	filtFastq.u = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_pos.fastq.gz")),
-	groupF.u = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
-	otsF = otsBed,
-	outF = file.path(guideD, paste0(sampleName, "_w", w, "_OGI.txt"))
-	)
+#getOGI(rawFastq.de = file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz")),
+#	filtFastq.de = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_pos.fastq.gz")),
+#	groupF.de = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
+#	rawFastq.u = file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz")),
+#	filtFastq.u = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_pos.fastq.gz")),
+#	groupF.u = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_ONCO_SCORE.xlsx")),
+#	otsF = otsBed,
+#	outF = file.path(guideD, paste0(sampleName, "_w", w, "_OGI.txt"))
+#	)
+
+##########################################################################################
+############                          SAVE READS                              ############
+##########################################################################################
+
+
+if(saveReads){
+	print("################     SAVE READS    ################")
+	
+	# Sample
+	dir.create(file.path(guideD, paste0(sampleName, "_reads")), showWarnings = FALSE)
+	getReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_SCORE.xlsx")),
+			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_AlignmentSort.bam")),
+			 outputDir = file.path(guideD, paste0(sampleName, "_reads"))
+			 )
+	addNbReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_SCORE.xlsx")),
+			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_AlignmentSort.bam")))		 
+	
+	# Control
+	dir.create(file.path(guideD, paste0(controlName, "_reads")), showWarnings = FALSE)
+	getReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_SCORE.xlsx")),
+			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_AlignmentSort.bam")),
+			 outputDir = file.path(guideD, paste0(controlName, "_reads"))
+			 )	
+ 	addNbReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES_SCORE.xlsx")),
+			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_AlignmentSort.bam")))	
+}
+
+
 
 }
 

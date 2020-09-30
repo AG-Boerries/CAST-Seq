@@ -11,7 +11,7 @@ getThreshold <- function(deltaFile, cutoff = 0.05)
 
 
 
-getCluster <- function(testFile, threshold)
+getHits <- function(testFile, threshold)# get hits
 {
 	CUTOFF <- threshold
 	#CUTOFF  <- 1500
@@ -38,9 +38,9 @@ getCluster <- function(testFile, threshold)
 			}
 		}
 	}
-	colnames(clusterTab)[colClust] <- "collapseCluster"
+	colnames(clusterTab)[colClust] <- "hits"
 	#clusterTab <- cbind(clusterTab, width = as.numeric(clusterTab[, "end"]) - as.numeric(clusterTab[, "start"]))
-	write.table(clusterTab, gsub("delta", "cluster", testFile), sep = "\t", row.names=F, quote = FALSE)
+	write.table(clusterTab, gsub("delta", "hits", testFile), sep = "\t", row.names=F, quote = FALSE)
 }
 
 

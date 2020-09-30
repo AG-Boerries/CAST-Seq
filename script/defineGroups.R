@@ -24,7 +24,12 @@ getEmpiricalPV <- function(x, y, type)
 assignGroups <- function(realF, rdF, otsF, cutoff)
 {
 	ots <- read.delim(otsF, header = FALSE)
-
+	print(realF)
+	print(file.exists(realF))
+	
+	print(rdF)
+	print(file.exists(rdF))
+	
 	realM <- read.xlsx(realF, sheet = 1)
 	rdM <- read.xlsx(rdF, sheet = 1)
 	
@@ -71,14 +76,14 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	abline(v=flanking.cutoff, col="black", lwd=3)
 	dev.off()
 	
-	mygroups <- rep("CBS", nrow(realM))
-	mygroups[realM.bf >= flanking.cutoff] <- "hom.recomb"
-	mygroups[score.adj.pv < cutoff] <- "off.target"
+	mygroups <- rep("NBS", nrow(realM))
+	mygroups[realM.bf >= flanking.cutoff] <- "HMT"
+	mygroups[score.pv < cutoff] <- "OMT"# QV or PV
 
 	mygroups2 <- rep(NA, nrow(realM))
 	#mygroups2[mygroups == "off.target" & (realM.bf > flanking.cutoff)] <- "yes"
-	mygroups2[mygroups == "off.target" & (realM.bf >= flanking.cutoff)] <- "yes"
-	mygroups2[mygroups == "hom.recomb"] <- "yes"
+	mygroups2[mygroups == "OMT" & (realM.bf >= flanking.cutoff)] <- "yes"
+	mygroups2[mygroups == "HMT"] <- "yes"
 	
 	mygroups3 <- rep(NA, nrow(realM))
 	ld.idx <- isLargeDel(realM, ots)
@@ -89,13 +94,13 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	
 	
 	realM$group <- mygroups
-	realM$is.hom.recomb. <- mygroups2
+	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	
-	realM$off.target.pvalue <- score.pv 
-	realM$off.target.adj.pvalue <- score.adj.pv 
-	realM$hom.recomb.pvalue <- flanking.pv
-	realM$hom.recomb.adj.pvalue <- flanking.adj.pv
+	realM$OMT.pvalue <- score.pv 
+	realM$OMT.adj.pvalue <- score.adj.pv 
+	realM$HMT.pvalue <- flanking.pv
+	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	
 	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
@@ -151,14 +156,14 @@ assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
 	abline(v=flanking.cutoff, col="black", lwd=3)
 	dev.off()
 	
-	mygroups <- rep("CBS", nrow(realM))
-	mygroups[realM.bf >= flanking.cutoff] <- "hom.recomb"
-	mygroups[score.adj.pv < cutoff] <- "off.target"
+	mygroups <- rep("NBS", nrow(realM))
+	mygroups[realM.bf >= flanking.cutoff] <- "HMT"
+	mygroups[score.adj.pv < cutoff] <- "OMT"
 
 	mygroups2 <- rep(NA, nrow(realM))
 	#mygroups2[mygroups == "off.target" & (realM.bf > flanking.cutoff)] <- "yes"
-	mygroups2[mygroups == "off.target" & (realM.bf >= flanking.cutoff)] <- "yes"
-	mygroups2[mygroups == "hom.recomb"] <- "yes"
+	mygroups2[mygroups == "OMT" & (realM.bf >= flanking.cutoff)] <- "yes"
+	mygroups2[mygroups == "HMT"] <- "yes"
 	
 	mygroups3 <- rep(NA, nrow(realM))
 	ld.idx <- isLargeDel(realM, ots)
@@ -169,13 +174,13 @@ assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
 	
 	
 	realM$group <- mygroups
-	realM$is.hom.recomb. <- mygroups2
+	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	
-	realM$off.target.pvalue <- score.pv 
-	realM$off.target.adj.pvalue <- score.adj.pv 
-	realM$hom.recomb.pvalue <- flanking.pv
-	realM$hom.recomb.adj.pvalue <- flanking.adj.pv
+	realM$OMT.pvalue <- score.pv 
+	realM$OMT.adj.pvalue <- score.adj.pv 
+	realM$HMT.pvalue <- flanking.pv
+	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	
 	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
@@ -214,24 +219,24 @@ assignGroupsTALEN <- function(realF, rdF, otsF, cutoff)
 	#nbSignif <- realM[, grep("_adj.pv", colnames(realM))]
 	#nbSignif <- (colSums(nbSignif) / ncol(nbSignif)) * 100# percentage of significant pvalue
 	
-	mygroups <- rep("CBS", nrow(realM))
-	mygroups[realM.bf >= flanking.cutoff] <- "hom.recomb"
-	mygroups[qv < cutoff] <- "off.target"
+	mygroups <- rep("NBS", nrow(realM))
+	mygroups[realM.bf >= flanking.cutoff] <- "HMT"
+	mygroups[qv < cutoff] <- "OMT"
 
 	mygroups2 <- rep(NA, nrow(realM))
-	mygroups2[mygroups == "off.target" & (realM.bf >= flanking.cutoff)] <- "yes"
-	mygroups2[mygroups == "hom.recomb"] <- "yes"
+	mygroups2[mygroups == "OMT" & (realM.bf >= flanking.cutoff)] <- "yes"
+	mygroups2[mygroups == "HMT"] <- "yes"
 	
 	mygroups3 <- rep(NA, nrow(realM))
 	ld.idx <- isLargeDel(realM, ots)
 	if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
 	
 	realM$group <- mygroups
-	realM$is.hom.recomb. <- mygroups2
+	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	
-	realM$hom.recomb.pvalue <- flanking.pv
-	realM$hom.recomb.adj.pvalue <- flanking.adj.pv
+	realM$HMT.pvalue <- flanking.pv
+	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
 	
@@ -291,10 +296,10 @@ isLargeDel <- function(m, ots)
 }
 
 
-groupSummary <- function(inputF, outputF, clusters = NULL, score = NULL, pv = NULL)
+groupSummary <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 {
 	readMat <- read.xlsx(inputF, sheet = 1)
-	if(!is.null(clusters)) readMat <- readMat[readMat$collapseCluster > clusters, ]
+	if(!is.null(hits)) readMat <- readMat[readMat$hits > hits, ]
 	if(!is.null(score)) readMat <- readMat[readMat$score > score, ]
 	if(!is.null(pv)) readMat <- readMat[readMat$adj.pvalue < pv, ]
 	

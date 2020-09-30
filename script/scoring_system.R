@@ -69,10 +69,10 @@ getOTscore <- function(inputF, randomF, cutoff, otsF, distance)
 		else if(readMat$adj.pvalue[i] <= 0.45) score <- score + 0.5
 	
 		# deduplicated reads
-		if(readMat$collapseCluster[i] >= 3) score <- score + 1 
-		else if(readMat$collapseCluster[i] == 2) score <- score + 0.5
+		if(readMat$hits[i] >= 3) score <- score + 1 
+		else if(readMat$hits[i] == 2) score <- score + 0.5
 	
-		# cluster width
+		# hits width
 		if(readMat$width.raw[i] > 10) score <- score + 1
 		else if(readMat$width.raw[i] > 0) score <- score + 0.5
 	
@@ -127,10 +127,10 @@ getHRscore <- function(inputF, randomF, cutoff, otsF, distance)
 		else if(readMat$adj.pvalue[i] <= 0.45) score <- score + 0.5
 	
 		# deduplicated reads
-		if(readMat$collapseCluster[i] >= 3) score <- score + 1 
-		else if(readMat$collapseCluster[i] == 2) score <- score + 0.5
+		if(readMat$hits[i] >= 3) score <- score + 1 
+		else if(readMat$hits[i] == 2) score <- score + 0.5
 	
-		# cluster width
+		# hits width
 		if(readMat$width.raw[i] > 10) score <- score + 1
 		else if(readMat$width.raw[i] > 0) score <- score + 0.5
 	
@@ -179,10 +179,10 @@ getCBSscore <- function(inputF, randomF, cutoff, otsF, distance)
 		else if(readMat$adj.pvalue[i] <= 0.45) score <- score + 0.5
 	
 		# deduplicated reads
-		if(readMat$collapseCluster[i] >= 3) score <- score + 1 
-		else if(readMat$collapseCluster[i] == 2) score <- score + 0.5
+		if(readMat$hits[i] >= 3) score <- score + 1 
+		else if(readMat$hits[i] == 2) score <- score + 0.5
 	
-		# cluster width
+		# hits width
 		if(readMat$width.raw[i] > 10) score <- score + 1
 		else if(readMat$width.raw[i] > 0) score <- score + 0.5
 	
@@ -259,10 +259,10 @@ getOTscoreTALEN <- function(inputF, randomF, cutoff, otsF, distance)
 		else if(readMat$adj.pvalue[i] <= 0.45) score <- score + 0.5
 	
 		# deduplicated reads
-		if(readMat$collapseCluster[i] >= 3) score <- score + 1 
-		else if(readMat$collapseCluster[i] == 2) score <- score + 0.5
+		if(readMat$hits[i] >= 3) score <- score + 1 
+		else if(readMat$hits[i] == 2) score <- score + 0.5
 	
-		# cluster width
+		# hits width
 		if(readMat$width.raw[i] > 10) score <- score + 1
 		else if(readMat$width.raw[i] > 0) score <- score + 0.5
 	

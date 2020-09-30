@@ -59,11 +59,11 @@ doFisher <- function(tumor.reads, tumor.tot, ctl.reads, ctl.tot)
 
 overlapFiltering <- function(m)
 {
-	m.unique <- m[, c("chromosome", "start", "end", "strand", "read", "collapseCluster")]
+	m.unique <- m[, c("chromosome", "start", "end", "strand", "read", "hits")]
 	m.unique <- m.unique[!duplicated(as.matrix(m.unique)), ]
 	
-	collapse.ctl <- c()
-	collapseCluster.ctl <- c()
+	reads.ctl <- c()
+	hits.ctl <- c()
 	
 	for(i in 1:nrow(m.unique))
 		{
@@ -71,18 +71,18 @@ overlapFiltering <- function(m)
 			   m$start == m.unique[i, "start"] &
 			   m$end == m.unique[i, "end"]
 			   
-		collapse.ctl <- c(collapse.ctl, sum(m$"read.1"[idx]))
-		collapseCluster.ctl <- c(collapseCluster.ctl, sum(m$"collapseCluster.1"[idx]))
+		reads.ctl <- c(reads.ctl, sum(m$"read.1"[idx]))
+		hits.ctl <- c(hits.ctl, sum(m$"hits.1"[idx]))
 		}
 	
-	m.unique <- cbind(m.unique, read.ctl = collapse.ctl, collapseCluster.ctl = collapseCluster.ctl)
+	m.unique <- cbind(m.unique, read.ctl = reads.ctl, hits.ctl = hits.ctl)
 	return(m.unique)
 }
 
 
 doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 {
-	# LOAD CLUSTERS
+	# LOAD HITS
 	cl.test <- read.delim(testFile)
 	cl.ref <- read.delim(refFile)
 	
@@ -104,16 +104,26 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 		keep.extra.columns = TRUE)
 	
 	# INTERSECT
-	gr.ovl <- findOverlaps(query = cl.test.gr, subject = cl.ref.gr, type = "any", ignore.strand= TRUE)	
-	df.ovl <- data.frame(cl.test[queryHits(gr.ovl),], cl.ref[subjectHits(gr.ovl),])
-	df.spe <- cl.test[-queryHits(gr.ovl),]
+	gr.ovl <- findOverlaps(query = cl.test.gr, subject = cl.ref.gr, type = "any", ignore.strand= TRUE)
+	
+	if(length(queryHits(gr.ovl)) == 0){
+		df.spe <- cl.test
+		df.spe <- cbind(df.spe, read.ctl = 1, hits.ctl = 1)
+		df.final <- df.spe	
+	}else{
+		df.ovl <- data.frame(cl.test[queryHits(gr.ovl),], cl.ref[subjectHits(gr.ovl),])
+		df.spe <- cl.test[-queryHits(gr.ovl),]
 
-	# MERGE MULTIPLE OVERLAP
-	df.ovl <- overlapFiltering(df.ovl)
+		# MERGE MULTIPLE OVERLAP
+		df.ovl <- overlapFiltering(df.ovl)
 
-	df.spe <- cbind(df.spe, read.ctl = 1, collapseCluster.ctl = 1)
+		df.spe <- cbind(df.spe, read.ctl = 1, hits.ctl = 1)
 
-	df.final <- rbind(df.spe, df.ovl)
+		df.final <- rbind(df.spe, df.ovl)
+	
+	}
+	
+	
 	
 	# GET WIDTH
 	df.final <- cbind(df.final, width.raw = (df.final$end - df.final$start) - (size * 2),
@@ -138,7 +148,7 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 	df.final <- df.final[order(df.final$pvalue, -df.final$OddRatio), ]
 
 	# SAVE
-	outName <- paste0(gsub("_Alignment_cluster.bed$", "", testFile), "_w", size, ".xlsx")
+	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
 	write.xlsx(df.final, outName)
 }
 
@@ -147,7 +157,7 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 {
 	nbRef <- nbTest
 
-	# LOAD CLUSTERS
+	# LOAD HITS
 	cl.test <- read.delim(testFile)
 	
 	print(head(cl.test))
@@ -160,7 +170,7 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 		start.field = "start", end.field = "end", strand.field = "strand",
 		keep.extra.columns = TRUE)
 	
-	df.final <- cbind(cl.test, read.ctl = 1, collapseCluster.ctl = 1)
+	df.final <- cbind(cl.test, read.ctl = 1, hits.ctl = 1)
 	
 	# GET WIDTH
 	df.final <- cbind(df.final, width = df.final$end - df.final$start)
@@ -183,7 +193,7 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 	df.final <- df.final[order(df.final$pvalue, -df.final$OddRatio), ]
 
 	# SAVE
-	outName <- paste0(gsub("_Alignment_cluster.bed$", "", testFile), "_w", size, ".xlsx")
+	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
 	write.xlsx(df.final, outName)
 }
 
