@@ -152,12 +152,31 @@ Rscript ./CAST-Seq.R --pipeline "crispr"\
 **--controlName** XXX name of control (untreated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist<br/>
 **--homeD** name of home directory<br/>
 
-### Parameters**
-Additional parameters can be changed in the command above. Here is a description of these parameters:
+### Parameters
+Additional parameters can be changed in the command above. Here is a description of these parameters:<br/>
 
-**--grna** name of gRNA fasta (default "gRNA.fa")
+**--grna** name of gRNA fasta (default "gRNA.fa")<br/>
+**--onTarget** name of ON-target bed file (default "ots.bed")<br/>
+**--otsDistance** distance (bp) from the ON-target. Reads +/- this distance will be removed (default 50)<br/>
+**--surrounding_size** distance (bp) from the ON-target. Use for the scoring system (default 20000)<br/>
+**--flank1** name of first flanking sequence (default "flank1.fa")<br/>
+**--flank12** name of second flanking sequence (default "flank12.fa")<br/>
+**--flankingSize** distance to consider for HMT (default 2500)<br/>
+**--random** number of random sequences to generate (default 10000)<br/>
+**--width** distance to extend the putative sites (default 250)<br/>
+**--distCutoff** distance to merge hits together (default 1500)<br/>
+**--pvCutoff** pvalue threshold (default 0.05)<br/>
+**--scoreCutoff** gRNA alignment score threshold (default *NULL*)<br/>
+**--hitsCutoff** minimum number of hits per site (default 1)<br/>
+**--saveReads** should reads fastq sequences be saved (default "no")<br/>
+**--species** name of sample species (default "hg") *so far only hg can be used*<br/>
+**--cpu** number of CPUs (default 2) *at least 4 is advised*<br/>
+**--pythonPath** python path (default "/usr/bin/python")<br/>
 
-
+#### TALEN specific parameters
+These parameters are only used when **--pipeline** "talen" is set.<br/>
+**--grnaR** name of gRNA (RIGHT) fasta file<br/>
+**--grnaL** name of gRNA (LEFT) fasta file<br/>
 
 ## Authors
 
