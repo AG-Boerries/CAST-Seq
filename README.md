@@ -146,11 +146,11 @@ Rscript ./CAST-Seq.R --pipeline "crispr"\
 		     --homeD "../../"
 ```
 
-**--pipeline** name of the pipeline you want to use. Choose between "crispr" and "talen".
-**--sampleDname** name of sample directory
-**--sampleName** XXX name of test (treated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist
-**--controlName** XXX name of control (untreated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist
-**--homeD** name of home directory
+**--pipeline** name of the pipeline you want to use. Choose between "crispr" and "talen"<br/>
+**--sampleDname** name of sample directory<br/>
+**--sampleName** XXX name of test (treated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist<br/>
+**--controlName** XXX name of control (untreated) file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist<br/>
+**--homeD** name of home directory<br/>
 
 ### Parameters**
 Additional parameters can be changed in the command above. Here is a description of these parameters:
