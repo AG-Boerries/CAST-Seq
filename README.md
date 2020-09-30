@@ -193,7 +193,7 @@ We thank all members of our laboratories for constructive discussions and sugges
 
 ## Cite
 
-If you use this work please cite Turchiano. et al., (submitted)
+If you use this work please cite [Turchiano et al.](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3565007)
 
 ## References
 
