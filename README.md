@@ -135,8 +135,8 @@ CAST-Seq
 
 
 ## Running CAST-Seq
-After all tools and databases are installed and work properly, you should prepare a XXX_run.sh file as described bellow.
-Then the whole CAST-Seq pipeline can be executed using this single command:
+After all tools and databases are installed and work properly, the whole CAST-Seq pipeline can be executed using this single command (see example in
+script/run/):
 
 ```
 Rscript ./CAST-Seq.R --pipeline "crispr"\
