@@ -1303,6 +1303,33 @@ write.xlsx(compList, "RAG1A_set1_T1T4_set2_T1.xlsx")
 makeUpset("RAG1A_set1_T1T4_set2_T1.xlsx")
 
 
+################################
+# MMUL 1st vs. 3rd SAMPLES
+
+siteFiles <- c(file.path("~/Research/CASTSeq/pipelineGit/samples/Mmul_old_newParam/results/guide_aln/AA4689_1_S1_L001_w250_aln_stat_FLANK_GROUP_GENES.xlsx"),
+               file.path("~/Research/CASTSeq/pipelineGit/samples/ZJ52_CD33_1m/results_SAVE/guide_aln/AA5335_3_S3_L001_w250_aln_stat_FLANK_GROUP_GENES.xlsx")
+               )
+#names(siteFiles) <- sapply(strsplit(siteFiles, split = "/"), function(i) i[6])
+names(siteFiles) <- c("R1", "R3")
+
+
+setwd(file.path("~/Research/CASTSeq/overlap/"))
+compList <- dfComparisonList(siteFiles, names(siteFiles), width = 0)
+write.xlsx(compList, "MMUL_OVL.xlsx")
+
+makeUpset("MMUL_OVL.xlsx")
+
+
+
+
+
+
+
+
+
+
+
+
 siteList <- lapply(siteFiles, read.xlsx)
 siteList <- lapply(siteList, function(i) i[i$adj.pvalue < 0.05, ])
 siteList <- lapply(siteList, function(i) i[i$group != "CBS", ])

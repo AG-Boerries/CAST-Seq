@@ -709,19 +709,19 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   bed2$start <- siteM.sub$middleCoord
   
   # Re-Arange layout
-  bed2$end <- bed2$start + 250
-  bed2$start <- bed2$start - 250
+  bed2$end <- bed2$start + 1000
+  bed2$start <- bed2$start - 1000
   
   bed2$start[bed2$chromosome != "zoom_chr3"] <- bed2$start[bed2$chromosome != "zoom_chr3"] - 10000000
   bed2$end[bed2$chromosome != "zoom_chr3"] <- bed2$end[bed2$chromosome != "zoom_chr3"] + 10000000
   
   
   # INCREASE LINE THINKNESS OF HIGH COVERED SITES
-  isHigh <- bed2$hits >= 5
-  bed2$start[isHigh] <- bed2$start[isHigh] - 500
-  bed2$end[isHigh] <- bed2$end[isHigh] + 500
-  bed2$start[isHigh & bed2$chromosome != "zoom_chr3"] <- bed2$start[isHigh& bed2$chromosome != "zoom_chr3"] - 20000000
-  bed2$end[isHigh& bed2$chromosome != "zoom_chr3"] <- bed2$end[isHigh & bed2$chromosome != "zoom_chr3"] + 20000000
+  #isHigh <- bed2$hits >= 5
+  #bed2$start[isHigh] <- bed2$start[isHigh] - 500
+  #bed2$end[isHigh] <- bed2$end[isHigh] + 500
+  #bed2$start[isHigh & bed2$chromosome != "zoom_chr3"] <- bed2$start[isHigh& bed2$chromosome != "zoom_chr3"] - 20000000
+  #bed2$end[isHigh& bed2$chromosome != "zoom_chr3"] <- bed2$end[isHigh & bed2$chromosome != "zoom_chr3"] + 20000000
   
   # Manually define the ON-TARGET
   if(!is.null(ots.bed)){
@@ -759,7 +759,7 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   bed2.sub <- bed2[idx, ]# SELECT ON
   bed1.sub <- bed1[idx, ]
   
-  bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 1.5))
+  bed1.sub$end <- bed1.sub$start + 2000
   bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
   link.color.sub = link.color[idx]
   
@@ -767,8 +767,9 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   bed2 <- bed2[-idx, ]# REMOVE ON
   bed1 <- bed1[-idx, ]
   link.color = link.color[-idx]
+  group <- group[-idx]
   
-  circos.genomicLink(bed1, bed2, col = link.color, border = NA, h.ratio = 0.5)
+  circos.genomicLink(bed1[group != "NBS",], bed2[group != "NBS",], col = link.color[group != "NBS"], border = NA, h.ratio = 0.5)
   circos.genomicLink(bed1.sub, bed1.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   #circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   
