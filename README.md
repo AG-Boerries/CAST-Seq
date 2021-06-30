@@ -1,6 +1,6 @@
 # CAST-Seq
 
-CAST(chromosomal aberrations analysis by single targeted LM-PCR)-Seq is a novel method capable of detecting and quantifying chromosomal aberrations derived from on- and off-target activity of CRISPR-Cas nucleases or TALEN. See [Turchiano et al.](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3565007) (*in revision*) for detail information about CAST-Seq background and potential clinical application.
+CAST(chromosomal aberrations analysis by single targeted LM-PCR)-Seq is a novel method capable of detecting and quantifying chromosomal aberrations derived from on- and off-target activity of CRISPR-Cas nucleases or TALEN. See [Turchiano et al.](https://www.sciencedirect.com/science/article/abs/pii/S1934590921000527?via%3Dihub) for detail information about CAST-Seq background and potential clinical application.
 
 ## Getting Started
 
