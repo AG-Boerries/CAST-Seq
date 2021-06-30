@@ -108,7 +108,7 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   # DEFINE ZOOM
   if(is.null(ots.bed)){
-    idx <- which.max(siteM$read)
+    idx <- which.max(siteM$score)
     zoom.chr <- siteM$chromosome[idx]
     zoom.start <- siteM$middleCoord[idx] - zoom.size
     zoom.end <- siteM$middleCoord[idx] + zoom.size
@@ -424,7 +424,7 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
                        end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }else{# use middle coordinates
-    ots.idx <- which.max(siteM.sub$read)
+    ots.idx <- which.max(siteM.sub$score)
     bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
                        start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
                        end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
@@ -439,7 +439,8 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   link.color[group == "OMT/HMT"] <- rgb(255, 193, 37, max = 255, alpha = 175)# goldenrod1
   
   # ON to ON
-  idx <- which.max(siteM.sub$score)# ON TARGET IDX
+  #idx <- which.max(siteM.sub$score)# ON TARGET IDX
+  idx <- ots.idx
   #bed2.sub <- bed2[idx, ]# SELECT ON
   bed1.sub <- bed1[idx, ]
   
@@ -514,8 +515,18 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   }
   
   # DEFINE ZOOM
+  
+  bestScore.raw <- sapply(1:nrow(siteM), function(i){
+    if(siteM$group[i] != "OMT") return(5)
+    #if(is.na(siteM$BestCB[i])) return(5)
+    colName <- paste0(siteM$BestCB[i], "_score")
+    return(siteM[i, colName])
+  })
+  
+  siteM$score <- bestScore.raw
+  
   if(is.null(ots.bed)){
-    idx <- which.max(siteM$read)
+    idx <- which.max(siteM$score)
     zoom.chr <- siteM$chromosome[idx]
     zoom.start <- siteM$middleCoord[idx] - zoom.size
     zoom.end <- siteM$middleCoord[idx] + zoom.size
@@ -528,6 +539,7 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   # ADD ZOOM
   siteM <- extend_bed(siteM, zoom.chr, start = zoom.start, end = zoom.end)
+  bestScore.raw <- siteM$score
   
   # INIT (MUST BE ONLINE !!!)
   if(species == "hg38") cytoband = read.cytoband(species = species, chromosome.index = paste0("chr", c(1:22, "X", "Y")))
@@ -640,16 +652,11 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   ##################
   # BEST SCORE TRACK
   
-  bestScore.raw <- sapply(1:nrow(siteM), function(i){
-    if(siteM$group[i] != "OMT") return(5)
-    #if(is.na(siteM$BestCB[i])) return(5)
-    colName <- paste0(siteM$BestCB[i], "_score")
-    return(siteM[i, colName])
-  })
+
   
   bestScore.chr <- siteM[, "chromosome"]
   #bestScore.cutoff <- 9
-  bestScore.x <- siteM$LF.LR_middleCoord
+  bestScore.x <- siteM$middleCoord
   #bestScore.x <- siteM$start + round((siteM$end - siteM$start) / 2)
   
   # fill missing chr
@@ -691,7 +698,7 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
                  #print(ylim)
                  circos.rect(xlim[1], bestScore.cutoff, xlim[2], ceiling(ylim[2])+3, col = "#FF000020", border = NA)
                  
-                 circos.points(x[y < bestScore.cutoff], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y < bestScore.cutoff & y !=0], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
                  circos.points(x[y >= bestScore.cutoff], y[y >= bestScore.cutoff], pch = 16, cex = 0.75, col = "red")
                })
   
@@ -757,7 +764,7 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
                  print(ylim)
                  circos.rect(xlim[1], bestFlank.cutoff, xlim[2], ceiling(ylim[2])+5, col = "cornflowerblue", border = NA)
                  
-                 circos.points(x[y < bestFlank.cutoff], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y < bestFlank.cutoff & y !=0], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
                  circos.points(x[y >= bestFlank.cutoff], y[y >= bestFlank.cutoff], pch = 16, cex = 0.75, col = "blue")
                  
                },  track.margin = c(0,0))
@@ -855,7 +862,7 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
                        end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }else{# use middle coordinates
-    ots.idx <- which.max(siteM.sub$read)
+    ots.idx <- which.max(siteM.sub$score)
     bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
                        start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
                        end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
@@ -870,7 +877,8 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   link.color[group == "OMT/HMT"] <- rgb(255, 193, 37, max = 255, alpha = 175)# goldenrod1
   
   # ON to ON
-  idx <- which.max(siteM.sub$read)# ON TARGET IDX
+  #idx <- which.max(siteM.sub$score)# ON TARGET IDX
+  idx <- ots.idx
   #bed2.sub <- bed2[idx, ]# SELECT ON
   bed1.sub <- bed1[idx, ]
   
@@ -941,6 +949,7 @@ library(GenomicRanges)
                    top = NULL,
                    species = "hg38")
   
+  # HAX1-HD24
   siteFile <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/HAX1/HAX1-HD24/results/guide_aln/HAX1-HD24-treat_w250_FINAL.xlsx")
   
   zoom.size <- 25000
@@ -964,6 +973,32 @@ library(GenomicRanges)
                    top = NULL,
                    species = "hg38")
   
+  # Universal-CCR5-VEGFA_with_VEGFA_gRNA_OVL1
+  siteFile <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples_overlap/data_170621/UniversalCASTseq/Universal-CCR5-VEGFA_with_VEGFA_gRNA_OVL1/Universal-CCR5-VEGFA_with_VEGFA_gRNA_OVL1_FINAL.xlsx")
+  
+  zoom.size <- 25000
+  label <- FALSE
+  PV.cutoff <- NULL
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/UniversalCASTseq/Universal-CCR5-VEGFA_with_VEGFA_gRNA/data/ots.bed")
+  realigned = FALSE
+  species <- "hg38"
+  outFile <- "~/tmp/Universal-CCR5-VEGFA_with_VEGFA_gRNA_circlize.pdf"
+  
+  circlizePipeline(siteFile, zoom.size, label, 
+                   PV.cutoff = PV.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = FALSE,
+                   gene.bed = NULL, ots.bed = ots.bed, 
+                   realigned = TRUE,
+                   outFile,
+                   top = NULL,
+                   species = "hg38")
+  
+  
+  
   # TEST TALEN
   siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-D10Ag1g2/results/guide_aln/COL7A1-2-D10Ag1g2_w250_FINAL.xlsx")
   zoom.size <- 10000
@@ -972,7 +1007,7 @@ library(GenomicRanges)
   bestScore.cutoff = NULL
   bestFlank.cutoff = 25
   gene.bed = NULL
-  ots.bed = NULL
+  ots.bed = file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-D10Ag1g2/data/ots.bed")
   realigned = FALSE
   species <- "hg38"
   outFile <- "~/tmp/COL7A1-2-D10Ag1g2_circlize.pdf"
@@ -981,13 +1016,13 @@ library(GenomicRanges)
                       PV.cutoff = 0.05,
                       bestScore.cutoff = NULL, bestFlank.cutoff = 25,
                       showNBS = FALSE,
-                      gene.bed = NULL, ots.bed = NULL, 
-                      realigned = FALSE,
+                      gene.bed = NULL, ots.bed = ots.bed, 
+                      realigned = TRUE,
                       outFile,
                       species = "hg38")
   
   # TEST MOUSE
-  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/AZ_160421/AZ-Liver3/results/guide_aln/AZ-Liver3_w250_FINAL.xlsx")
+  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/AZ_160421/AZ-Liver8_3/results/guide_aln/AZ-Liver8_w250_FINAL.xlsx")
   zoom.size <- 10000
   label <- FALSE
   PV.cutoff <- 0.05
@@ -1006,6 +1041,7 @@ library(GenomicRanges)
                    gene.bed = NULL, ots.bed = NULL, 
                    realigned = FALSE,
                    outFile,
+                   top = 20,
                    species = "mm10")
   
   
