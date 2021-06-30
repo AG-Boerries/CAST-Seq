@@ -21,8 +21,7 @@ Requiered software and databases
 1. Software
 
 	* R (3.4.2)
-	* FLASh (v1.2.11) from https://ccb.jhu.edu/software/FLASH/
-	* Bbmap (38.22) from https://jgi.doe.gov/data-and-tools/bbtools/
+	* BBmap and BBmerge (38.22) from https://jgi.doe.gov/data-and-tools/bbtools/
 	* Bowtie2 (2.3.4.2) from http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
 	* samtools (1.9) from http://samtools.sourceforge.net
 	* bedtools (2.27.1) from https://bedtools.readthedocs.io/en/latest/
@@ -155,6 +154,7 @@ Rscript ./CAST-Seq.R --pipeline "crispr"\
 ### Parameters
 Additional parameters can be changed in the command above. Here is a description of these parameters:<br/>
 
+**--fastqD** name of directory containing the fastq files<br/>
 **--grna** name of gRNA fasta (default "gRNA.fa")<br/>
 **--onTarget** name of ON-target bed file (default "ots.bed")<br/>
 **--otsDistance** distance (bp) from the ON-target. Reads +/- this distance will be removed (default 50)<br/>
@@ -193,7 +193,7 @@ We thank all members of our laboratories for constructive discussions and sugges
 
 ## Cite
 
-If you use this work please cite [Turchiano et al.](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3565007) *in revision*
+If you use this work please cite [Turchiano et al., Cell Stem Cell, 2021](https://www.sciencedirect.com/science/article/abs/pii/S1934590921000527?via%3Dihub)
 
 ## References
 
