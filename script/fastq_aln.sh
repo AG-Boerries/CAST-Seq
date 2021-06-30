@@ -3,7 +3,7 @@
 # sh FANCF_decoy_rep1_fastq_aln.sh /home/gandri/offTargets/Giando/pipelineGit/ FANCF_decoy_rep1 FANCF-withDecoyGel_S1_L001 UT-FANCF-withDecoyGel_S2_L001
 
 ############# DEFINE INPUTS ##################
-CPU=$6
+CPU=$7
 echo "Number of CPU"
 echo ${CPU}
 
@@ -18,9 +18,14 @@ annDir=$2/
 #mainDir=${homeDir}FANCF_decoy/
 mainDir=${homeDir}/samples/$3/
 
-# $4 $5
+# $4
+fastqDir=$4/
+
+echo $fastqDir
+
+# $5 $6
 #Samples="FANCF-decoy_L001 FANCF-UT-decoy_L001"
-Samples="$4 $5"
+Samples="$5 $6"
 
 # Set up the directories and annotation files
 #annotDir=${homeDir}annotations/
@@ -54,8 +59,11 @@ do
 
 	logFile=${outDir}${fname}_pipeline.log
 
-	pair1=${dataDir}fastq/${fname}_R1_001.fastq.gz
-	pair2=${dataDir}fastq/${fname}_R2_001.fastq.gz
+	#pair1=${dataDir}fastq/${fname}_R1_001.fastq.gz
+	#pair2=${dataDir}fastq/${fname}_R2_001.fastq.gz
+
+	pair1=${fastqDir}/${fname}_R1_001.fastq.gz
+	pair2=${fastqDir}/${fname}_R2_001.fastq.gz
 
 	############## Quality control fastq files #####################
 	#fastqc -o ${outDir} --noextract ${pair1}
@@ -82,24 +90,38 @@ do
 	#echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
 	
 	
+	################# BBMERGE PAIRING ###################
+	echo "START BBMERGE PAIRING" > ${logFile}
+	bbmerge.sh -Xmx4g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
+	bbmerge.sh -Xmx4g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
+	
+	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}.assembled.fastq.gz outu=${outDir}${fname}.unassembled.R2.fastq outu2=${outDir}${fname}.unassembled.R1.fastq adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa ecct extend2=20 iterations=5
+	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}_merged.fastq.gz outu=${outDir}${fname}_UNmerged_R2.fastq.gz outu2=${outDir}${fname}_UNmerged_R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
+	bbmerge.sh -Xmx20g in=${pair2} in2=${pair1} out=${outDir}${fname}_assembled.fastq.gz outu=${outDir}${fname}_unassembled.R2.fastq.gz outu2=${outDir}${fname}_unassembled.R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
+	
+	cat ${outDir}${fname}_assembled.fastq.gz ${outDir}${fname}_unassembled.R2.fastq.gz > ${outDir}${fname}_merged.fastq.gz
+	
 	################# FLASH PAIRING ###################
-	echo "START FLASH PAIRING" > ${logFile}
+	#echo "START FLASH PAIRING" > ${logFile}
 
 	# FLASH
-	flash -t ${CPU} -o ${fname} -d ${outDir} -m 15 -M 250 ${pair2} ${pair1}
+	#flash -t ${CPU} -o ${fname} -d ${outDir} -m 15 -M 250 ${pair2} ${pair1}
 
 	# MERGE PAIRED AND UNPAIRED R2
 	# we used notCombined_1.fastq because we used R2 as R1 with flash
 	##cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	gzip ${outDir}${fname}.extendedFrags.fastq
-	gzip ${outDir}${fname}.notCombined_1.fastq
-	gzip ${outDir}${fname}.notCombined_2.fastq
+	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	#gzip ${outDir}${fname}.extendedFrags.fastq
+	#gzip ${outDir}${fname}.notCombined_1.fastq
+	#gzip ${outDir}${fname}.notCombined_2.fastq
 	
 	echo "_R1_001.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
 	echo "_R2_001.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
+	echo $(gzcat ${pair2}|wc -l)/4|bc >> ${logFile}
+	
+	echo "_assembled.fastq.gz: " >> ${logFile}
+	echo $(gzcat ${outDir}${fname}_assembled.fastq.gz|wc -l)/4|bc >> ${logFile}
 	
 	echo "_merged.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -154,7 +176,6 @@ do
 	#source activate py27
 	#CRISPResso -r1 ${outDir}${fname}_Filt3_pos.fastq.gz -a ${crispSeq} -g ${crispGuide} -o ${outDir} --min_identity_score 60 -p ${CPU}
 	#source deactivate
-
 
 	#trimming of the CCR5 sequence before the cut site
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30

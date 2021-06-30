@@ -4,6 +4,7 @@
 #library(GenomicRanges)
 
 #ensembl = useMart("ensembl",dataset="hsapiens_gene_ensembl")# 38
+#ensembl <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl", host="http://jul2019.archive.ensembl.org")
 
 
 ############################################
@@ -45,14 +46,42 @@ finalize <- function(inputFile){
 				   )
 
 	write.xlsx(toxlsx, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_FINAL.xlsx", inputFile),
-		row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'))
+		row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'), overwrite = TRUE)
 
 }
+
+finalizeOverlap <- function(inputFile){
+  # LOAD INPUT FILE
+  readMat <- read.xlsx(inputFile, sheet = 1)
+  
+  # RE-ORDER
+  readMat$group <- factor(readMat$group, levels = c("OMT", "HMT", "NBS"))
+  readMat <- readMat[order(readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
+  
+  # SITE SUBSETS
+  readMat.OMT <- readMat[readMat$group == "OMT",]
+  readMat.HMT <- readMat[readMat$group == "HMT",]
+  readMat.NBS <- readMat[readMat$group == "NBS",]
+  
+  # SAVE
+  toxlsx <- list(ALL.signif = readMat,
+                 OMT.signif = readMat.OMT,
+                 HMT.signif = readMat.HMT,
+                 NBS.signif = readMat.NBS
+  )
+  
+  write.xlsx(toxlsx, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_FINAL.xlsx", inputFile),
+             row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'), overwrite = TRUE)
+  
+}
+
+
 
 symbol2entrez <- function(symbol)
 {
 	if(ORG.STR == "org.Hs.eg.db") entrez <- mget(as.character(symbol), org.Hs.egSYMBOL2EG, ifnotfound=NA)
 	if(ORG.STR == "org.Mmu.eg.db") entrez <- mget(as.character(symbol), org.Mmu.egSYMBOL2EG, ifnotfound=NA)
+	if(ORG.STR == "org.Mm.eg.db") entrez <- mget(as.character(symbol), org.Mm.egSYMBOL2EG, ifnotfound=NA)
 	entrez <- unique(unlist(lapply(entrez, function(i) return(i[1]))))
 	entrez <- entrez[!is.na(entrez)]
 	return(entrez)
@@ -62,6 +91,7 @@ entrez2symbol <- function(entrez)
 {
 	if(ORG.STR == "org.Hs.eg.db") symbol <- mget(as.character(entrez), org.Hs.egSYMBOL, ifnotfound=NA)
 	if(ORG.STR == "org.Mmu.eg.db") symbol <- mget(as.character(entrez), org.Mmu.egSYMBOL, ifnotfound=NA)
+	if(ORG.STR == "org.Mm.eg.db") symbol <- mget(as.character(entrez), org.Mm.egSYMBOL, ifnotfound=NA)
 	symbol <- unlist(lapply(symbol, function(i) return(i[1])))
 	return(symbol)
 }
@@ -70,6 +100,7 @@ getHumanEntrez <- function()
 {
 	if(ORG.STR == "org.Hs.eg.db") x <- org.Hs.egSYMBOL
 	if(ORG.STR == "org.Mmu.eg.db") x <- org.Mmu.egSYMBOL
+	if(ORG.STR == "org.Mm.eg.db") x <- org.Mm.egSYMBOL
 	mapped_genes <- mappedkeys(x)
 	xx <- as.list(x[mapped_genes])
 	return(names(xx))
@@ -171,7 +202,7 @@ addGenes <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.width =
 	#	gsub(".xlsx", "_final.xlsx", inputFile), row.names = FALSE)
 	
 	write.xlsx(cbind(readMat, "Genes.within.100kb" = unlist(geneChr), "Oncogenes.within.100kb" = unlist(oncoChr)),
-		inputFile, row.names = FALSE)
+		inputFile, row.names = FALSE, overwrite = TRUE)
 
 }
 
@@ -244,7 +275,7 @@ addGenesTALEN <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.wi
 	#	gsub(".xlsx", "_final.xlsx", inputFile), row.names = FALSE)
 	
 	write.xlsx(cbind(readMat, "Genes.within.100kb" = unlist(geneChr), "Oncogenes.within.100kb" = unlist(oncoChr)),
-		inputFile, row.names = FALSE)
+		inputFile, row.names = FALSE, overwrite = TRUE)
 
 }
 

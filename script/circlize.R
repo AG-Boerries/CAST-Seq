@@ -51,17 +51,39 @@ extend_bed = function(bed, chromosome, start, end, prefix = "zoom_") {
 }
 
 
-circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
-                             bestScore.cutoff = 9, bestFlank.cutoff = 25,
+circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
+                             PV.cutoff = 0.05,
+                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                             showNBS = TRUE,
                              gene.bed = NULL, ots.bed = NULL, 
                              realigned = FALSE,
                              outFile,
-                             species = "hg38"){
+                             species = "hg38",
+                             top = NULL){
   # READ INPUT FILE
   siteM <- read.xlsx(siteFile)
+  siteM <- siteM[siteM$chromosome %in% paste0("chr", c(1:22, "X", "Y")), ]
+  
+  if(!is.null(top)){
+    # ONLY SHOW THE TOP XXX SITES
+    top <- min(c(top, nrow(siteM)))
+    siteM <- siteM[1:top, , drop = FALSE]
+  }
   
   siteM.chr <- factor(gsub("chr", "", siteM$chromosome), levels = c(1:22, "X", "Y"))
+  
+
   siteM <- siteM[order(siteM.chr, siteM$start), ]
+  
+  # SHOW NBS (TRUE / FALSE)
+  if(!(showNBS)){
+    siteM <- siteM[siteM[, "group"] != "NBS", ]
+  }
+  
+  # SELECT SIGNIFICANT
+  if(!is.null(PV.cutoff)) siteM <- siteM[siteM$adj.pvalue < PV.cutoff, ]
+  
+  if(is.null(bestScore.cutoff)) bestScore.cutoff <- floor(min(siteM$score[siteM$group == "OMT"]))
   
   # CHANGE MIDDLE COORDINATE OF THE ON TARGET
   if(!is.null(ots.bed) & realigned){
@@ -101,25 +123,38 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   siteM <- extend_bed(siteM, zoom.chr, start = zoom.start, end = zoom.end)
   
   # INIT (MUST BE ONLINE !!!)
-  cytoband = read.cytoband(species = species)
+  if(species == "hg38") cytoband = read.cytoband(species = species, chromosome.index = paste0("chr", c(1:22, "X", "Y")))
+  if(species == "mm10") cytoband = read.cytoband(species = species, chromosome.index = paste0("chr", c(1:19, "X", "Y")))
   cytoband_df = cytoband$df
   chromosome = cytoband$chromosome
+  
   
   new_cytoband_df <- extend_cytoband(cytoband_df, zoom.chr, start = zoom.start, end = zoom.end)
   
   xrange = c(cytoband$chr.len, cytoband$chr.len[zoom.chr])
-  normal_chr_index = 1:24
-  zoomed_chr_index = 25
-  
-  sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
-                   xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
-  sector.width[1:24] <- sector.width[1:24] 
-  sector.width[25] <- sector.width[25] / 1.25
+  if(species == "hg38"){
+    normal_chr_index = 1:24
+    zoomed_chr_index = 25
+    
+    sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
+                     xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
+    sector.width[1:24] <- sector.width[1:24] 
+    sector.width[25] <- sector.width[25] / 1.25
+  }
+  if(species == "mm10"){
+    normal_chr_index = 1:21
+    zoomed_chr_index = 22
+    
+    sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
+                     xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
+    sector.width[1:21] <- sector.width[1:21] 
+    sector.width[22] <- sector.width[22] / 1.25
+  }
   
   pdf(outFile, width = 3.5, height = 3.5)
   circos.clear()
-  circos.par(start.degree = 90, "gap.degree" = c(rep(3, 23), 10, 20))
-  
+  if(species == "hg38") circos.par(start.degree = 90, "gap.degree" = c(rep(3, 23), 10, 20))
+  if(species == "mm10") circos.par(start.degree = 90, "gap.degree" = c(rep(3, 20), 10, 20))
   
   circos.initializeWithIdeogram(new_cytoband_df, 
                                 sector.width = sector.width,
@@ -136,7 +171,7 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   group <- siteM.sub[, "group"]
   #group[group == "off.target"] <- "OMT"
   #group[group == "HR"] <- "HMT"
-  group[group == "OMT" & siteM.sub$is.hom.recomb. == "yes"] <- "OMT/HMT"
+  group[group == "OMT" & siteM.sub$is.HMT == "yes"] <- "OMT/HMT"
   #group[group == "CBS"] <- "NBS"
   
   # ON target
@@ -152,10 +187,10 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
                                        keep.extra.columns = FALSE, ignore.strand = TRUE)
     
     gr.ovl <- findOverlaps(query = ots.gr, subject = siteM.sub.gr, type = "any", maxgap = 0)
-    
+    #print(siteM.sub[subjectHits(gr.ovl), ])
     group[subjectHits(gr.ovl)] <- "ON"
   }else{# Use the on with higher reads as ON target
-    group[which.max(siteM.sub$read)] <- "ON"
+    group[which.max(siteM.sub$score)] <- "ON"
   }
   
   group.bed <- data.frame(chr = siteM.sub$chromosome,
@@ -227,7 +262,7 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
                  #print(ylim)
                  circos.rect(xlim[1], bestScore.cutoff, xlim[2], ceiling(ylim[2])+3, col = "#FF000020", border = NA)
                  
-                 circos.points(x[y < bestScore.cutoff], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y < bestScore.cutoff & y !=0], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
                  circos.points(x[y >= bestScore.cutoff], y[y >= bestScore.cutoff], pch = 16, cex = 0.75, col = "red")
                })
   
@@ -293,7 +328,7 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
                  print(ylim)
                  circos.rect(xlim[1], bestFlank.cutoff, xlim[2], ceiling(ylim[2])+5, col = "cornflowerblue", border = NA)
                  
-                 circos.points(x[y < bestFlank.cutoff], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y < bestFlank.cutoff & y !=0], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
                  circos.points(x[y >= bestFlank.cutoff], y[y >= bestFlank.cutoff], pch = 16, cex = 0.75, col = "blue")
                  
                },  track.margin = c(0,0))
@@ -315,6 +350,15 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
   if(class(geneM[,3]) == "factor") geneM[,3] <- as.numeric(levels(geneM[,3]))[geneM[,3]]
   if(class(geneM[,4]) == "factor") geneM[,4] <- as.character(geneM[,4])
+  
+  #adjust gene coordinates
+  zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
+  zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
+  if(geneM$geneStart < zoom.min) geneM$geneStart <- zoom.min
+  if(geneM$geneEnd > zoom.max) geneM$geneEnd <- zoom.max
+  
+  if(geneM$geneEnd < geneM$geneStart) geneM$geneEnd <- geneM$geneStart
+  
   color <- c("grey40")
   
   circos.genomicTrackPlotRegion(geneM, stack = TRUE, panel.fun = function(region, value, ...) {
@@ -350,33 +394,40 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   bed2$start <- siteM.sub$middleCoord
   
   # Re-Arange layout
-  bed2$end <- bed2$start + 1000
-  bed2$start <- bed2$start - 1000
+  mysize <- round((zoom.size * 2000) / 50000)
+  bed2$end <- bed2$start + mysize
+  bed2$start <- bed2$start - mysize
   
-  bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] - 20000000
-  bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] + 20000000
+  bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] - 30000000
+  bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] + 30000000
   
   # Manually define the ON-TARGET
   if(!is.null(ots.bed)){
-    ots.df <- read.delim(ots.bed, header = FALSE)
-    ots.df <- ots.df[1, , drop = FALSE]
-    ots.df[,1] <- gsub("zoom_", "", ots.df[,1])
-    ots.df[,2] <- ots.df[,2] + round((ots.df[,3] - ots.df[,2]) /2)
-    ots.df[,3] <- ots.df[,2]
+    #ots.df <- read.delim(ots.bed, header = FALSE)
+    #ots.df <- ots.df[1, , drop = FALSE]
+    #ots.df[,1] <- gsub("zoom_", "", ots.df[,1])
+    #ots.df[,2] <- ots.df[,2] + round((ots.df[,3] - ots.df[,2]) /2)
+    #ots.df[,3] <- ots.df[,2]
     
-    ots.chr <- paste0("zoom_", ots.df[,1])
-    ots.start <- ots.df[,2] - 1000
-    ots.end <- ots.df[,3] + 1000
+    #ots.chr <- paste0("zoom_", ots.df[,1])
+    #ots.start <- ots.df[,2] - 2000
+    #ots.end <- ots.df[,3] + 2000
     
-    bed1 <- data.frame(chr = rep(ots.chr, nrow(bed2)),
-                       start = rep(ots.start, nrow(bed2)),# 46359961
-                       end = rep(ots.end, nrow(bed2)),# 46380781
+    #bed1 <- data.frame(chr = rep(ots.chr, nrow(bed2)),
+    #                   start = rep(ots.start, nrow(bed2)),# 46359961
+    #                   end = rep(ots.end, nrow(bed2)),# 46380781
+    #                   value1 = 0)
+    
+    ots.idx <- which(group == "ON")
+    bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }else{# use middle coordinates
     ots.idx <- which.max(siteM.sub$read)
     bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
-                       start = rep(siteM.sub$middleCoord[ots.idx] - 1000, nrow(bed2)),# 46359961
-                       end = rep(siteM.sub$middleCoord[ots.idx] + 1000, nrow(bed2)),# 46380781
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }
   
@@ -388,12 +439,17 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   link.color[group == "OMT/HMT"] <- rgb(255, 193, 37, max = 255, alpha = 175)# goldenrod1
   
   # ON to ON
-  idx <- which.max(siteM.sub$read)# ON TARGET IDX
-  bed2.sub <- bed2[idx, ]# SELECT ON
+  idx <- which.max(siteM.sub$score)# ON TARGET IDX
+  #bed2.sub <- bed2[idx, ]# SELECT ON
   bed1.sub <- bed1[idx, ]
   
-  bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 2.5))
-  bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
+  bed1.sub$start <- bed1.sub$start + round(bed1.sub$end - bed1.sub$start) 
+  bed1.sub$start <- bed1.sub$start - (mysize*2)
+  #bed1.sub$end <- bed1.sub$end + mysize
+  #bed1.sub$end <- bed1.sub$start + 4000
+  
+  #bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 2.5))
+  #bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
   link.color.sub = link.color[idx]
   
   # ON to OFF
@@ -402,25 +458,39 @@ circlizePipelineOLD <- function(siteFile, zoom.size = 50000, label = FALSE,
   link.color = link.color[-idx]
   
   circos.genomicLink(bed1, bed2, col = link.color, border = NA, h.ratio = 0.5)
-  circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
+  circos.genomicLink(bed1.sub, bed1.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   #circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   
   dev.off()
   
 }
 
-
-circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
-                             bestScore.cutoff = 9, bestFlank.cutoff = 25,
+circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
+                             PV.cutoff = 0.05,
+                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                             showNBS = TRUE,
                              gene.bed = NULL, ots.bed = NULL, 
                              realigned = FALSE,
                              outFile,
                              species = "hg38"){
   # READ INPUT FILE
   siteM <- read.xlsx(siteFile)
+  siteM <- siteM[siteM$chromosome %in% paste0("chr", c(1:22, "X", "Y")), ]
   
   siteM.chr <- factor(gsub("chr", "", siteM$chromosome), levels = c(1:22, "X", "Y"))
   siteM <- siteM[order(siteM.chr, siteM$start), ]
+  
+  # SHOW NBS (TRUE / FALSE)
+  if(!(showNBS)){
+    siteM <- siteM[siteM[, "group"] != "NBS", ]
+  }
+  
+  # SELECT SIGNIFICANT
+  if(!is.null(PV.cutoff)) siteM <- siteM[siteM$adj.pvalue < PV.cutoff, ]
+  
+  # FIX MIDDLE COORD BUG IN TALEN
+  siteM$middleCoord <- siteM$LF.LR_middleCoord
+  
   
   # CHANGE MIDDLE COORDINATE OF THE ON TARGET
   if(!is.null(ots.bed) & realigned){
@@ -460,24 +530,38 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   siteM <- extend_bed(siteM, zoom.chr, start = zoom.start, end = zoom.end)
   
   # INIT (MUST BE ONLINE !!!)
-  cytoband = read.cytoband(species = species)
+  if(species == "hg38") cytoband = read.cytoband(species = species, chromosome.index = paste0("chr", c(1:22, "X", "Y")))
+  if(species == "mm10") cytoband = read.cytoband(species = species, chromosome.index = paste0("chr", c(1:19, "X", "Y")))
   cytoband_df = cytoband$df
   chromosome = cytoband$chromosome
   
   new_cytoband_df <- extend_cytoband(cytoband_df, zoom.chr, start = zoom.start, end = zoom.end)
   
   xrange = c(cytoband$chr.len, cytoband$chr.len[zoom.chr])
-  normal_chr_index = 1:24
-  zoomed_chr_index = 25
   
-  sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
-                   xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
-  sector.width[1:24] <- sector.width[1:24] 
-  sector.width[25] <- sector.width[25] / 1.25
+  if(species == "hg38"){
+    normal_chr_index = 1:24
+    zoomed_chr_index = 25
+    
+    sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
+                     xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
+    sector.width[1:24] <- sector.width[1:24] 
+    sector.width[25] <- sector.width[25] / 1.25
+  }
+  if(species == "mm10"){
+    normal_chr_index = 1:21
+    zoomed_chr_index = 22
+    
+    sector.width = c(xrange[normal_chr_index] / sum(xrange[normal_chr_index]), 
+                     xrange[zoomed_chr_index] / sum(xrange[zoomed_chr_index]))
+    sector.width[1:21] <- sector.width[1:21] 
+    sector.width[22] <- sector.width[22] / 1.25
+  }
   
   pdf(outFile, width = 3.5, height = 3.5)
   circos.clear()
-  circos.par(start.degree = 90, "gap.degree" = c(rep(3, 23), 10, 20))
+  if(species == "hg38") circos.par(start.degree = 90, "gap.degree" = c(rep(3, 23), 10, 20))
+  if(species == "mm10") circos.par(start.degree = 90, "gap.degree" = c(rep(3, 20), 10, 20))
   
   
   circos.initializeWithIdeogram(new_cytoband_df, 
@@ -555,15 +639,36 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   ##################
   # BEST SCORE TRACK
-  bestScore <- siteM[, "score"]
+  
+  bestScore.raw <- sapply(1:nrow(siteM), function(i){
+    if(siteM$group[i] != "OMT") return(5)
+    #if(is.na(siteM$BestCB[i])) return(5)
+    colName <- paste0(siteM$BestCB[i], "_score")
+    return(siteM[i, colName])
+  })
+  
   bestScore.chr <- siteM[, "chromosome"]
-  bestScore.x <- siteM$middleCoord
+  #bestScore.cutoff <- 9
+  bestScore.x <- siteM$LF.LR_middleCoord
+  #bestScore.x <- siteM$start + round((siteM$end - siteM$start) / 2)
   
   # fill missing chr
   missing.chr <- setdiff(unique(new_cytoband_df[[1]]), bestScore.chr)
-  bestScore <- c(bestScore, rep(0, length(missing.chr)))
+  bestScore <- c(bestScore.raw, rep(0, length(missing.chr)))
   bestScore.chr <- c(bestScore.chr, missing.chr)
   bestScore.x  <- c(bestScore.x, rep(0, length(missing.chr)))
+  
+  if(is.null(bestScore.cutoff)) bestScore.cutoff <- floor(min(bestScore.raw[siteM$group == "OMT"]))
+  
+  #bestScore <- siteM[, "score"]
+  #bestScore.chr <- siteM[, "chromosome"]
+  #bestScore.x <- siteM$middleCoord
+  
+  # fill missing chr
+  #missing.chr <- setdiff(unique(new_cytoband_df[[1]]), bestScore.chr)
+  #bestScore <- c(bestScore, rep(0, length(missing.chr)))
+  #bestScore.chr <- c(bestScore.chr, missing.chr)
+  #bestScore.x  <- c(bestScore.x, rep(0, length(missing.chr)))
   
   circos.track(factors = bestScore.chr, x = bestScore.x, y = bestScore, bg.col = "#EEEEEE",
                bg.border = NA, track.height = 0.1, panel.fun = function(x, y) {
@@ -597,7 +702,7 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   # BEST SCORE (ZOOM ONLY)
   idx <- siteM$chromosome == paste0("zoom_", zoom.chr)
-  bestScore.zoom <- siteM[idx, "score"]
+  bestScore.zoom <- bestScore.raw[idx]
   bestScore.zoom.chr <- siteM[idx, "chromosome"]
   bestScore.zoom.x1 <- siteM[idx, "start"]
   bestScore.zoom.x2 <- siteM[idx, "end"]
@@ -668,12 +773,23 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
     geneM <- read.delim(gene.bed, header = FALSE)# must be 4 columns: chr, start, end, symbol
     geneM[,1] <- paste0("zoom_", geneM[,1])
   }else{# define gene based on ON-target coordinates
-    geneM <- siteM.sub[which.max(siteM.sub$read), c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
+    #geneM <- siteM.sub[which.max(siteM.sub$read), c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
+    geneM <- siteM.sub[group == "ON", c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
+    
   }
   
   if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
   if(class(geneM[,3]) == "factor") geneM[,3] <- as.numeric(levels(geneM[,3]))[geneM[,3]]
   if(class(geneM[,4]) == "factor") geneM[,4] <- as.character(geneM[,4])
+  
+  #adjust gene coordinates
+  zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
+  zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
+  if(geneM$geneStart < zoom.min) geneM$geneStart <- zoom.min
+  if(geneM$geneEnd > zoom.max) geneM$geneEnd <- zoom.max
+  
+  if(geneM$geneEnd < geneM$geneStart) geneM$geneEnd <- geneM$geneStart
+  
   color <- c("grey40")
   
   circos.genomicTrackPlotRegion(geneM, stack = TRUE, panel.fun = function(region, value, ...) {
@@ -704,46 +820,45 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   ################################
   # LINK ON TARGETS TO ALL TARGETS
-  bed2 <- siteM.sub[, 1:5]
+  bed2 <- siteM.sub[, 1:4]
   #bed2$start <- bed2$start + round((bed2$end - bed2$start) / 2)
   bed2$start <- siteM.sub$middleCoord
   
   # Re-Arange layout
-  bed2$end <- bed2$start + 1000
-  bed2$start <- bed2$start - 1000
+  mysize <- round((zoom.size * 2000) / 50000)
+  bed2$end <- bed2$start + mysize
+  bed2$start <- bed2$start - mysize
   
-  bed2$start[bed2$chromosome != "zoom_chr3"] <- bed2$start[bed2$chromosome != "zoom_chr3"] - 10000000
-  bed2$end[bed2$chromosome != "zoom_chr3"] <- bed2$end[bed2$chromosome != "zoom_chr3"] + 10000000
-  
-  
-  # INCREASE LINE THINKNESS OF HIGH COVERED SITES
-  #isHigh <- bed2$hits >= 5
-  #bed2$start[isHigh] <- bed2$start[isHigh] - 500
-  #bed2$end[isHigh] <- bed2$end[isHigh] + 500
-  #bed2$start[isHigh & bed2$chromosome != "zoom_chr3"] <- bed2$start[isHigh& bed2$chromosome != "zoom_chr3"] - 20000000
-  #bed2$end[isHigh& bed2$chromosome != "zoom_chr3"] <- bed2$end[isHigh & bed2$chromosome != "zoom_chr3"] + 20000000
+  bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$start[bed2$chromosome != paste0("zoom_", zoom.chr)] - 30000000
+  bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] <- bed2$end[bed2$chromosome != paste0("zoom_", zoom.chr)] + 30000000
   
   # Manually define the ON-TARGET
   if(!is.null(ots.bed)){
-    ots.df <- read.delim(ots.bed, header = FALSE)
-    ots.df <- ots.df[1, , drop = FALSE]
-    ots.df[,1] <- gsub("zoom_", "", ots.df[,1])
-    ots.df[,2] <- ots.df[,2] + round((ots.df[,3] - ots.df[,2]) /2)
-    ots.df[,3] <- ots.df[,2]
+    #ots.df <- read.delim(ots.bed, header = FALSE)
+    #ots.df <- ots.df[1, , drop = FALSE]
+    #ots.df[,1] <- gsub("zoom_", "", ots.df[,1])
+    #ots.df[,2] <- ots.df[,2] + round((ots.df[,3] - ots.df[,2]) /2)
+    #ots.df[,3] <- ots.df[,2]
     
-    ots.chr <- paste0("zoom_", ots.df[,1])
-    ots.start <- ots.df[,2] - 1000
-    ots.end <- ots.df[,3] + 1000
+    #ots.chr <- paste0("zoom_", ots.df[,1])
+    #ots.start <- ots.df[,2] - 2000
+    #ots.end <- ots.df[,3] + 2000
     
-    bed1 <- data.frame(chr = rep(ots.chr, nrow(bed2)),
-                       start = rep(ots.start, nrow(bed2)),# 46359961
-                       end = rep(ots.end, nrow(bed2)),# 46380781
+    #bed1 <- data.frame(chr = rep(ots.chr, nrow(bed2)),
+    #                   start = rep(ots.start, nrow(bed2)),# 46359961
+    #                   end = rep(ots.end, nrow(bed2)),# 46380781
+    #                   value1 = 0)
+    
+    ots.idx <- which(group == "ON")
+    bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }else{# use middle coordinates
     ots.idx <- which.max(siteM.sub$read)
     bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
-                       start = rep(siteM.sub$middleCoord[ots.idx] - 1000, nrow(bed2)),# 46359961
-                       end = rep(siteM.sub$middleCoord[ots.idx] + 1000, nrow(bed2)),# 46380781
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
                        value1 = 0)
   }
   
@@ -756,26 +871,32 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   # ON to ON
   idx <- which.max(siteM.sub$read)# ON TARGET IDX
-  bed2.sub <- bed2[idx, ]# SELECT ON
+  #bed2.sub <- bed2[idx, ]# SELECT ON
   bed1.sub <- bed1[idx, ]
   
-  bed1.sub$end <- bed1.sub$start + 2000
-  bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
+  bed1.sub$start <- bed1.sub$start + round(bed1.sub$end - bed1.sub$start) 
+  bed1.sub$start <- bed1.sub$start - (mysize*2)
+  #bed1.sub$end <- bed1.sub$end + mysize
+  #bed1.sub$end <- bed1.sub$start + 4000
+  
+  #bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 2.5))
+  #bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
   link.color.sub = link.color[idx]
   
   # ON to OFF
   bed2 <- bed2[-idx, ]# REMOVE ON
   bed1 <- bed1[-idx, ]
   link.color = link.color[-idx]
-  group <- group[-idx]
   
-  circos.genomicLink(bed1[group != "NBS",], bed2[group != "NBS",], col = link.color[group != "NBS"], border = NA, h.ratio = 0.5)
+  circos.genomicLink(bed1, bed2, col = link.color, border = NA, h.ratio = 0.5)
   circos.genomicLink(bed1.sub, bed1.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   #circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
   
   dev.off()
   
 }
+
+
 
 
 
@@ -793,6 +914,165 @@ library(circlize)
 library(openxlsx)
 library(GenomicRanges)
 
+  
+  # TEST CRISPR
+  #siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/MK_Kapa_Rep2_OVL/MK_Kapa_Rep2_FINAL.xlsx")
+  #siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/Emendo/samples_0221/EMD101-sample1-1/results/guide_aln/EMD101-sample1-1_w250_FINAL.xlsx")
+  siteFile <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/HAX1/HAX1-HD19/results/guide_aln/HAX1-HD19-treat_w250_FINAL.xlsx")
+  
+  zoom.size <- 25000
+  label <- FALSE
+  PV.cutoff <- 0.05
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/HAX1/HAX1-HD19/data/ots.bed")
+  realigned = FALSE
+  species <- "hg38"
+  outFile <- "~/tmp/HAX1-HD19_circlize2.pdf"
+  
+  circlizePipeline(siteFile, zoom.size, label, 
+                      PV.cutoff = PV.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = FALSE,
+                   gene.bed = NULL, ots.bed = ots.bed, 
+                   realigned = FALSE,
+                   outFile,
+                   top = NULL,
+                   species = "hg38")
+  
+  siteFile <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/HAX1/HAX1-HD24/results/guide_aln/HAX1-HD24-treat_w250_FINAL.xlsx")
+  
+  zoom.size <- 25000
+  label <- FALSE
+  PV.cutoff <- 0.05
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/data_170621/HAX1/HAX1-HD24/data/ots.bed")
+  realigned = FALSE
+  species <- "hg38"
+  outFile <- "~/tmp/HAX1-HD24_circlize.pdf"
+  
+  circlizePipeline(siteFile, zoom.size, label, 
+                   PV.cutoff = PV.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = FALSE,
+                   gene.bed = NULL, ots.bed = ots.bed, 
+                   realigned = FALSE,
+                   outFile,
+                   top = NULL,
+                   species = "hg38")
+  
+  # TEST TALEN
+  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-D10Ag1g2/results/guide_aln/COL7A1-2-D10Ag1g2_w250_FINAL.xlsx")
+  zoom.size <- 10000
+  label <- FALSE
+  PV.cutoff <- 0.05
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = NULL
+  realigned = FALSE
+  species <- "hg38"
+  outFile <- "~/tmp/COL7A1-2-D10Ag1g2_circlize.pdf"
+  
+  circlizePipelineTALEN(siteFile, zoom.size, label, 
+                      PV.cutoff = 0.05,
+                      bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                      showNBS = FALSE,
+                      gene.bed = NULL, ots.bed = NULL, 
+                      realigned = FALSE,
+                      outFile,
+                      species = "hg38")
+  
+  # TEST MOUSE
+  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/AZ_160421/AZ-Liver3/results/guide_aln/AZ-Liver3_w250_FINAL.xlsx")
+  zoom.size <- 10000
+  label <- FALSE
+  PV.cutoff <- 0.05
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = NULL
+  realigned = FALSE
+  species <- "mm10"
+  outFile <- "~/tmp/AZ-Liver3_circlize.pdf"
+  
+  circlizePipeline(siteFile, zoom.size, label, 
+                   PV.cutoff = PV.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = FALSE,
+                   gene.bed = NULL, ots.bed = NULL, 
+                   realigned = FALSE,
+                   outFile,
+                   species = "mm10")
+  
+  
+  # ASTRAZENECA 8 11
+  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/AZ_160421/AZ-Liver8_11_OVL2/AZ-Liver8_11_OVL2_FINAL.xlsx")
+  
+  zoom.size <- 25000
+  label <- FALSE
+  PV.cutoff <- NULL
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = file.path("~/Research/CASTSeq/pipelineGit/samples/AZ_160421/AZ-Liver8_3/data/ots.bed")
+  realigned = FALSE
+  species <- "hg38"
+  top <- 2
+
+  
+  mytops <- c(1, 2, 5, 10, 20, 50,nrow(read.xlsx(siteFile)))
+  lapply(mytops, function(top){
+    outFile <- file.path("~/tmp/", paste0("liver8_11_circlize_top", top, ".pdf"))
+    
+    circlizePipeline(siteFile, zoom.size, label, 
+                     PV.cutoff = NULL,
+                     bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                     showNBS = FALSE,
+                     gene.bed = NULL, ots.bed = ots.bed, 
+                     realigned = FALSE,
+                     outFile,
+                     top = top,
+                     species = "hg38")
+    
+  })
+
+  
+  # ASTRAZENECA 16 18
+  siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/AZ_160421/AZ-Liver16_18/AZ-Liver16_18_FINAL.xlsx")
+  
+  zoom.size <- 25000
+  label <- FALSE
+  PV.cutoff <- NULL
+  bestScore.cutoff = NULL
+  bestFlank.cutoff = 25
+  gene.bed = NULL
+  ots.bed = file.path("~/Research/CASTSeq/pipelineGit/samples/AZ_160421/AZ-Liver16_19/data/ots.bed")
+  realigned = FALSE
+  species <- "hg38"
+  
+  mytops <- c(1, 2, 5, 10, 20, nrow(read.xlsx(siteFile)))
+  lapply(mytops, function(top){
+    outFile <- file.path("~/tmp/", paste0("liver16_18_circlize_top", top, ".pdf"))
+    
+    circlizePipeline(siteFile, zoom.size, label, 
+                     PV.cutoff = NULL,
+                     bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                     showNBS = FALSE,
+                     gene.bed = NULL, ots.bed = ots.bed, 
+                     realigned = FALSE,
+                     outFile,
+                     top = top,
+                     species = "hg38")
+    
+  })
+  
+##################################################
+# OLD
+  
 # TEST FUNCTION
 siteFile <- file.path("/home/gandrieux/offTargets/Giando/cluster/G3_WT_ovl/",
                       "G3_WT_ovl_w250_aln_stat_FLANK_GROUP_GENES.xlsx")

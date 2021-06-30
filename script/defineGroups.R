@@ -47,20 +47,55 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	#print(score.cutoff)
 	#print(flanking.cutoff)	
 	
-	# plot score.cutoff (REAL)
-	pdf(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF))
-	#png(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
-	plot(density(realM[, "score"]), main = paste0("Cutoff score: ", score.cutoff), xlab = "guide alignment score")
-	abline(v=score.cutoff, col="black", lwd=3)
-	dev.off()
-	
-	# plot flanking.cutoff (REAL)
-	#xmax <- min(100, max(realM.bf))
-	pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF))
-	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
-	plot(density(realM.bf[realM.bf <= 100]), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
-	abline(v=flanking.cutoff, col="black", lwd=3)
-	dev.off()
+	if(nrow(realM) > 10){
+	  # plot score.cutoff (REAL)
+	  pdf(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF))
+	  #png(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
+	  plot(density(realM[, "score"]), main = paste0("Cutoff score: ", score.cutoff), xlab = "guide alignment score")
+	  abline(v=score.cutoff, col="black", lwd=3)
+	  dev.off()
+	  
+	  
+	  ggmat <- data.frame(dist = realM[, "score"])
+	  p <- ggplot(ggmat) + 
+	    geom_density(aes(x=dist))
+	  p <- p + annotate("rect", xmin = score.cutoff,
+	                    xmax = Inf,
+	                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	  p <- p + geom_vline(xintercept=score.cutoff, 
+	                      color = "black", size=2)
+	  p <- p + theme_bw(base_size = 16)
+	  p <- p + xlab("substring length (bp)")
+	  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
+	  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF),
+	         width = 6, height = 6)
+	  
+	}
+
+	if(length(realM.bf) > 10){
+  	# plot flanking.cutoff (REAL)
+  	#xmax <- min(100, max(realM.bf))
+  	#pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF))
+  	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
+  	#plot(density(realM.bf[realM.bf <= 100]), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
+  	#abline(v=flanking.cutoff, col="black", lwd=3)
+  	#dev.off()
+  	
+  
+  	ggmat <- data.frame(dist = realM.bf[realM.bf <= 100])
+  	p <- ggplot(ggmat) + 
+  	  geom_density(aes(x=dist))
+  	p <- p + annotate("rect", xmin = flanking.cutoff,
+  	                  xmax = Inf,
+  	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  	p <- p + geom_vline(xintercept=flanking.cutoff, 
+  	                    color = "black", size=2)
+  	p <- p + theme_bw(base_size = 16)
+  	p <- p + xlab("substring length (bp)")
+  	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+  	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+  	       width = 6, height = 6)
+	}
 	
 	# plot score.cutoff (RANDOM)
 	pdf(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF))
@@ -69,13 +104,44 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	abline(v=score.cutoff, col="black", lwd=3)
 	dev.off()
 	
-	# plot flanking.cutoff (RANDOM)
-	pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF))
-	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", rdF), units="px", width=1600, height=1600, res=300)
-	plot(density(rdM.bf), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
-	abline(v=flanking.cutoff, col="black", lwd=3)
-	dev.off()
+	ggmat <- data.frame(dist = rdM[, "score"])
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = score.cutoff,
+	                  xmax = Inf,
+	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=score.cutoff, 
+	                    color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("guide alignment score")
+	p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
+	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF),
+	       width = 6, height = 6)
 	
+	
+	# plot flanking.cutoff (RANDOM)
+	#pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF))
+	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", rdF), units="px", width=1600, height=1600, res=300)
+	#plot(density(rdM.bf), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
+	#abline(v=flanking.cutoff, col="black", lwd=3)
+	#dev.off()
+	
+	ggmat <- data.frame(dist = rdM.bf)
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = flanking.cutoff,
+	                  xmax = Inf,
+	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=flanking.cutoff, 
+	                    color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("substring length (bp)")
+	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+	       width = 6, height = 6)
+	
+	
+	#
 	mygroups <- rep("NBS", nrow(realM))
 	mygroups[realM.bf >= flanking.cutoff] <- "HMT"
 	mygroups[score.pv < cutoff] <- "OMT"# QV or PV
@@ -103,7 +169,7 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	
-	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
+	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
 assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
@@ -183,7 +249,7 @@ assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
 	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	
-	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
+	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
 assignGroupsTALEN <- function(realF, rdF, otsF, cutoff)
@@ -238,21 +304,51 @@ assignGroupsTALEN <- function(realF, rdF, otsF, cutoff)
 	realM$HMT.pvalue <- flanking.pv
 	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
-	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE)	
+	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 	
-	# flanking plot (REAL)
-	pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF))
-	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
-	plot(density(realM.bf[realM.bf <= 100]), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
-	abline(v=flanking.cutoff, col="black", lwd=3)
-	dev.off()
+	if(length(realM.bf) > 10){
+  	# flanking plot (REAL)
+  	#pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF))
+  	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
+  	#plot(density(realM.bf[realM.bf <= 100]), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
+  	#abline(v=flanking.cutoff, col="black", lwd=3)
+  	#dev.off()
+  	
+  	ggmat <- data.frame(dist = realM.bf[realM.bf <= 100])
+  	p <- ggplot(ggmat) + 
+  	  geom_density(aes(x=dist))
+  	p <- p + annotate("rect", xmin = flanking.cutoff,
+  	                  xmax = Inf,
+  	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  	p <- p + geom_vline(xintercept=flanking.cutoff, 
+  	                    color = "black", size=2)
+  	p <- p + theme_bw(base_size = 16)
+  	p <- p + xlab("substring length (bp)")
+  	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+  	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+  	       width = 6, height = 6)
+	}
 	
 	# plot flanking.cutoff (RANDOM)
-	pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF))
+	#pdf(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF))
 	#png(gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.png", rdF), units="px", width=1600, height=1600, res=300)
-	plot(density(rdM.bf), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
-	abline(v=flanking.cutoff, col="black", lwd=3)
-	dev.off()
+	#plot(density(rdM.bf), main = paste0("Cutoff length: ", flanking.cutoff), xlab = "substring length (bp)")
+	#abline(v=flanking.cutoff, col="black", lwd=3)
+	#dev.off()
+	
+	ggmat <- data.frame(dist = rdM.bf)
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = flanking.cutoff,
+	                  xmax = Inf,
+	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=flanking.cutoff, 
+	                    color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("substring length (bp)")
+	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+	       width = 6, height = 6)
 
 }
 
@@ -304,11 +400,68 @@ groupSummary <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 	if(!is.null(pv)) readMat <- readMat[readMat$adj.pvalue < pv, ]
 	
 	if(nrow(readMat)>0){
-		write.xlsx(data.frame(table(readMat$group)), outputF, row.names = FALSE)
+		write.xlsx(data.frame(table(readMat$group)), outputF, row.names = FALSE, overwrite = TRUE)
 		}
 }
 
+hitsBarplot <- function(inputF, pv = NULL, top = NULL, showNBS = TRUE, log = TRUE, outName = NULL){
+  realM <- read.xlsx(inputF, sheet = 1)
+  if(!is.null(pv)) realM <- realM[realM$adj.pvalue < pv, ]
+  if(!showNBS) realM <- realM[realM$group != "NBS", ]
+  if(!is.null(top)){
+    realM <- realM[order(-realM$hits), ]
+    if(nrow(realM) > top) realM <- realM[1:top, ]
+  }
+  
+  
+  ggmat <- realM[, c("hits", "group")]
+  ggmat$group[realM$group == "OMT" & realM$is.HMT == "yes"] <- "OMT/HMT"
+  ggmat$group[1] <- "ON"
+  ggmat$group <- factor(ggmat$group, levels = c("ON", "OMT", "HMT", "OMT/HMT", "NBS"))
+  
+  ggmat$Name <- paste(realM$chromosome, realM$start, realM$hits, sep = ":")
+  ggmat$Name <- factor(ggmat$Name, levels = ggmat$Name[order(-ggmat$hits)])
+  ggmat <- ggmat[order(ggmat$Name), ]
+  
+  p <- ggplot(data=ggmat, aes(x=Name, y=hits, fill = group)) +
+    geom_bar(stat="identity", width = 0.75)
+  p <- p + geom_text(aes(label=hits, color = group),  vjust=0.5, hjust = -0.25, size=3.5, angle = 90, fontface = "bold")
+  #p <- p + geom_text(aes(label=hits, color = group),  vjust=-0.5, hjust = -0.25, size=3, angle = 45, fontface = "bold")
+  #p <- p + ylim(c(0, max(ggmat$hits) + (max(ggmat$hits)*0.5)))
+  p <- p + theme_bw(base_size = 18) + theme(panel.grid.minor = element_blank())
 
+  p <- p + scale_fill_manual(values=c(ON = "green3",
+                                      OMT = "red3",
+                                      HMT = "blue3",
+                                      "OMT/HMT" = "goldenrod1",
+                                      NBS = "grey"))
+  p <- p + scale_color_manual(values=c(ON = "green3",
+                                      OMT = "red3",
+                                      HMT = "blue3",
+                                      "OMT/HMT" = "goldenrod1",
+                                      NBS = "grey"))
+  p <- p + xlab("") + ylab("Hits")
+  p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+  if(log){
+    p <- p + scale_y_log10(limits = c(1, max(ggmat$hits) + (max(ggmat$hits)*0.5)))
+    p <- p + annotation_logticks(sides = "l", size = 0.25) 
+  }else{
+    p <- p + ylim(c(0, (max(ggmat$hits) + max(ggmat$hits*0.1))))
+  }
+
+  
+  mywidth <- nrow(ggmat) * 7.5 /10
+  mywidth <- max(c(mywidth, 5))
+  
+  if(is.null(outName)){
+    pdfName <- gsub("_FINAL.xlsx", "_hits_barplot.pdf", inputF)
+  }else{
+    pdfName <- outName
+  }
+  ggsave(plot = p, filename = pdfName,
+         width = mywidth, height = 7)
+}
 
 ############################################
 ###                                      ###
@@ -318,6 +471,8 @@ groupSummary <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 
 if(FALSE)
 {
+  library(openxlsx)
+  library(ggplot2)
 ################
 # LOAD REAL DATA
 
@@ -341,6 +496,40 @@ readMat.real <- assignGroups(readMat.real, readMat.rd, cutoff)
 # SAVE
 setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/alignment/G3_W250"))
 write.xlsx(readMat.real, "G3_W250_aln_stat_FLANK_GROUP.xlsx")
+
+
+###########################
+# TEST hitsBarplot FUNCTION
+
+
+inputF <- file.path("~/Research/CASTSeq/pipelineGit/samples/Emendo/samples_0221/EMD101-sample1-1/results/guide_aln/EMD101-sample3-1_w250_FINAL.xlsx")
+pv <- 0.05
+top <- 10
+log <- TRUE
+
+setwd(file.path("~/Research/CASTSeq/pipelineGit/samples/Emendo/samples_0221"))
+
+inputList <- list.files(pattern = "_FINAL.xlsx", recursive = TRUE, full.names = TRUE)
+lapply(inputList, function(i){
+  print(i)
+  hitsBarplot(i, pv = 0.05, top = 50, showNBS = TRUE, log = TRUE,
+              outName = gsub("_FINAL.xlsx", "_hits_barplot.pdf", i))
+  hitsBarplot(i, pv = 0.05, top = 50, showNBS = FALSE, log = TRUE,
+              outName = gsub("_FINAL.xlsx", "_hits_barplot_woNBS.pdf", i))
+})
+
+# EMENDO OVERLAP
+setwd(file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/Emendo/samples_0221/"))
+
+inputList <- list.files(pattern = "_FINAL.xlsx", recursive = TRUE, full.names = TRUE)
+lapply(inputList, function(i){
+  print(i)
+  hitsBarplot(i, pv = NULL, top = NULL, showNBS = TRUE, log = TRUE,
+              outName = gsub("_FINAL.xlsx", "_hits_barplot.pdf", i))
+  hitsBarplot(i, pv = NULL, top = NULL, showNBS = FALSE, log = TRUE,
+              outName = gsub("_FINAL.xlsx", "_hits_barplot_woNBS.pdf", i))
+})
+
 }
 
 

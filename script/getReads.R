@@ -109,7 +109,7 @@ addNbReads <- function(inputFile, bamFile){
 
 	# SAVE
 	readMat <- cbind(readMat, nb)
-	write.xlsx(readMat, gsub(".xlsx", "_READS.xlsx", inputFile), row.names = FALSE)
+	write.xlsx(readMat, gsub(".xlsx", "_READS.xlsx", inputFile), row.names = FALSE, overwrite = TRUE)
 
 	# DELETE TMP DIR
 	unlink(dir1, recursive = T)

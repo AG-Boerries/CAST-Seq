@@ -8,7 +8,7 @@ toNUM <- function(x) as.numeric(levels(x))[x]
 # TO DO: get DELTA, use grange to intersect ots and sites, remove everything +/- otsD of ots
 
 
-getDelta <- function(inputFile, otsF = NULL, otsD = 50)
+getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 {
 	# inputFile: bed file (output from fastq alignment pipeline)
 	# output: generate a _delta.bed file and a _delta_density.pdf plot
@@ -107,12 +107,37 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 		}
 
 	# Plot delta density
-	pdf(paste0(inputName, "_delta_density_RAW.pdf"))
+	#pdf(paste0(inputName, "_delta_density_RAW.pdf"))
 	#tiff(paste0(inputName, "_delta_density.tiff"), units="in", width=5, height=5, res = 800)
 	#png(paste0(inputName, "_delta_density.png"), units="px", width=1600, height=1600, res=300)
-	plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
-	dev.off()
-
+	#plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
+	#dev.off()
+	
+	ggmat <- data.frame(dist = log10(delta+1))
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = -Inf,
+	                  xmax = log10(distance),
+	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=log10(distance), 
+	                    color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("log10(read base distance)")
+	p <- p + ggtitle(paste0("Cutoff: ", distance))
+	ggsave(plot = p, filename = paste0(inputName, "_delta_density_RAW.pdf"),
+	       width = 6, height = 6)
+	
+	
+	# Percentage of reads below / above the distance threshold
+	bellow <- sum(delta <= distance)
+	above <- sum(delta > distance)
+	bellow.pc <- round(bellow / (bellow + above) * 100, digits = 2)
+	above.pc <- round(above / (bellow + above) * 100, digits = 2)
+	toxlsx <- data.frame(distance = distance,
+	                     bellow.percentage = bellow.pc,
+	                     above.percentage = above.pc)
+	write.xlsx(toxlsx, paste0(inputName, "_delta_density_RAW.xlsx"), overwrite = TRUE)
+	
 	bed5 <- cbind(bed4, delta)
 	colnames(bed5) <- c("chromosome", "start", "end", "strand", "read", "delta")
 	write.table(bed5, paste0(inputName, "_delta_RAW.bed"), quote = FALSE,  sep = "\t", row.names = FALSE)
@@ -249,10 +274,35 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50)
 	
 	}
 	# Plot delta density
-	pdf(paste0(inputName, "_delta_density.pdf"))
-	plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
-	dev.off()
-
+	#pdf(paste0(inputName, "_delta_density.pdf"))
+	#plot(density(log10(delta+1)), main = "", xlab = "log10(read base distance)")
+	#dev.off()
+	
+	ggmat <- data.frame(dist = log10(delta+1))
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = -Inf,
+	                  xmax = log10(distance),
+	                  ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=log10(distance), 
+	                    color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("log10(read base distance)")
+	p <- p + ggtitle(paste0("Cutoff: ", distance))
+	ggsave(plot = p, filename = paste0(inputName, "_delta_density.pdf"),
+	       width = 6, height = 6)
+	
+	# Percentage of reads below / above the distance threshold
+	bellow <- sum(delta <= distance)
+	above <- sum(delta > distance)
+	bellow.pc <- round(bellow / (bellow + above) * 100, digits = 2)
+	above.pc <- round(above / (bellow + above) * 100, digits = 2)
+	toxlsx <- data.frame(distance = distance,
+	                     bellow.percentage = bellow.pc,
+	                     above.percentage = above.pc)
+	write.xlsx(toxlsx, paste0(inputName, "_delta_density.xlsx"), overwrite = TRUE)
+	
+	
 	bed5 <- cbind(bed4, delta)
 	colnames(bed5) <- c("chromosome", "start", "end", "strand", "read", "delta")
 	write.table(bed5, paste0(inputName, "_delta.bed"), quote = FALSE,  sep = "\t", row.names = FALSE)
@@ -371,12 +421,39 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 		}, mc.cores = NBCPU)
 	
 	# density	
-	pdf(gsub(".bed", ".shuffle_delta_density.pdf", inputFile))
+	#pdf(gsub(".bed", ".shuffle_delta_density.pdf", inputFile))
 	#tiff(gsub(".bed", ".shuffle_delta_density.pdf", inputFile), units="in", width=5, height=5, res = 800)
 	#png(gsub(".bed", ".shuffle_delta_density.png", inputFile), units="px", width=1600, height=1600, res=300)
-	plot(density(log10(unlist(deltaList)+1)), main = paste0("Cutoff: ", distance), xlab = "log10(read base distance)")
-	abline(v=log10(distance), col="black", lwd=3)
-	dev.off()	
+	#plot(density(log10(unlist(deltaList)+1)), main = paste0("Cutoff: ", distance), xlab = "log10(read base distance)")
+	#abline(v=log10(distance), col="black", lwd=3)
+	#dev.off()	
+	
+	
+	# density ggplot
+  ggmat <- data.frame(dist = log10(unlist(deltaList)+1))
+	p <- ggplot(ggmat) + 
+	  geom_density(aes(x=dist))
+	p <- p + annotate("rect", xmin = -Inf,
+	              xmax = log10(distance),
+	              ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+	p <- p + geom_vline(xintercept=log10(distance), 
+	              color = "black", size=2)
+	p <- p + theme_bw(base_size = 16)
+	p <- p + xlab("log10(read base distance)")
+	p <- p + ggtitle(paste0("Cutoff: ", distance))
+	ggsave(plot = p, filename = gsub(".bed", ".shuffle_delta_density.pdf", inputFile),
+	       width = 6, height = 6)
+	
+	# Percentage of reads below / above the distance threshold
+	bellow <- sum(unlist(deltaList) <= distance)
+	above <- sum(unlist(deltaList) > distance)
+	bellow.pc <- round(bellow / (bellow + above) * 100, digits = 2)
+	above.pc <- round(above / (bellow + above) * 100, digits = 2)
+	toxlsx <- data.frame(distance = distance,
+	                     bellow.percentage = bellow.pc,
+	                     above.percentage = above.pc)
+	write.xlsx(toxlsx, gsub(".bed", ".shuffle_delta_density.xlsx", inputFile), overwrite = TRUE)
+	
 	
 	# Percentage of pre-defined delta
 	deltaPC <- lapply(deltaList, function(d){

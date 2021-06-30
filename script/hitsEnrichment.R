@@ -23,7 +23,7 @@ expand <- function(readMat, size, chrFile)
 	limits <- limits[!is.na(limits)]
 	
 	readMat$start <- readMat$start - size
-	readMat$start[readMat$start < 0] <- 0
+	readMat$start[readMat$start < 1] <- 1
 	readMat$end <- readMat$end + size
 	readMat$end[readMat$end > limits] <- limits[readMat$end > limits]
 	return(readMat)
@@ -149,7 +149,7 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 
 	# SAVE
 	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
-	write.xlsx(df.final, outName)
+	write.xlsx(df.final, outName, overwrite = TRUE)
 }
 
 
@@ -194,7 +194,7 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 
 	# SAVE
 	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
-	write.xlsx(df.final, outName)
+	write.xlsx(df.final, outName, overwrite = TRUE)
 }
 
 
@@ -285,7 +285,7 @@ df.final <- df.final[order(df.final$pvalue, -df.final$OddRatio), ]
 
 # SAVE
 setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/data"))
-write.xlsx(df.final, paste0("G3_clusters_W", my.size, "_Fisher.xlsx"))
+write.xlsx(df.final, paste0("G3_clusters_W", my.size, "_Fisher.xlsx"), overwrite = TRUE)
 
 
 }

@@ -29,6 +29,8 @@ option_list = list(
               help="XXX name of control file. XXX_R1_001.fastq.gz AND XXX_R2_001.fastq.gz should exist [default= %default]", metavar="character"),
     make_option(c("--homeD"), type="character", default=NULL, 
               help="name of home directory [default= %default]", metavar="character"),
+	make_option(c("--fastqD"), type="character", default=NULL, 
+	            help="name of fastq directory [default= %default]", metavar="character"),
     make_option(c("--grna"), type="character", default="gRNA.fa", 
               help="name of gRNA fasta file [default= %default]", metavar="character"),
     make_option(c("--grnaR"), type="character", default="gRNA_Right.fa", 
@@ -59,7 +61,7 @@ option_list = list(
               help="gRNA alignment score threshold [default= %default]", metavar="numeric"),          
     make_option(c("--hitsCutoff"), type="integer", default=1, 
               help="minimum number of hits per site [default= %default]", metavar="integer"),    
-    make_option(c("--saveReads"), type="character", default="yes", 
+    make_option(c("--saveReads"), type="character", default="no", 
               help="should reads fastq sequences be saved [default= %default]", metavar="character"),         
     make_option(c("--species"), type="character", default="hg", 
               help="name of sample species [default= %default]", metavar="character"),   
@@ -69,7 +71,7 @@ option_list = list(
               help="name of overlap sample within overlap directory (only for overlap or talen_overlap pipelines) Must be XXX if the files is called XXX.xlsx", metavar="character"),          
 	make_option(c("--cpu"), type="integer", default=2, 
               help="Number of CPUs [default= %default]", metavar="integer"),            
-    make_option(c("--pythonPath"), type="character", default="/usr/bin/python", 
+    make_option(c("--pythonPath"), type="character", default="/Users/geoffroyandrieux/miniconda3/bin/python", 
               help="python path [default= %default]", metavar="character")             
 ); 
  
@@ -86,12 +88,12 @@ if(is.null(opt$sampleDname)){
   stop("At least one argument must be supplied (sampleDname).n", call.=FALSE)
 }
 
-if(is.null(opt$sampleName) & !(opt$pipeline %in% c("overlap", "talen_overlap"))){
+if(is.null(opt$sampleName) & !(opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (sampleName).n", call.=FALSE)
 }
 
-if(is.null(opt$controlName) & !(opt$pipeline %in% c("overlap", "talen_overlap"))){
+if(is.null(opt$controlName) & !(opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (controlName).n", call.=FALSE)
 }
@@ -102,12 +104,12 @@ if(is.null(opt$homeD)){
 }
 
 # Overlap pipeline parameters
-if(is.null(opt$ovlDname) & opt$pipeline %in% c("overlap", "talen_overlap")){
+if(is.null(opt$ovlDname) & opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap")){
   print_help(opt_parser)
   stop("At least one argument must be supplied when using overlap or talen overlap pipelines (ovlDname).n", call.=FALSE)
 }
 
-if(is.null(opt$ovlName) & opt$pipeline %in% c("overlap", "talen_overlap")){
+if(is.null(opt$ovlName) & opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap")){
   print_help(opt_parser)
   stop("At least one argument must be supplied when using overlap or talen overlap pipelines (ovlName).n", call.=FALSE)
 }
@@ -134,7 +136,8 @@ require(biomaRt)
 require(tools)
 require(karyoploteR)
 #require(UpSetR)
-
+require(circlize)
+library(tidyr)
 
 ##########################################################################################
 ################                     PARAMETERS                         ################## 
@@ -157,6 +160,7 @@ controlName <- opt$controlName
 # SET REFERENCE FOLDER
 homeD <- opt$homeD
 
+
 ##################
 # OTHER PARAMETERS
 
@@ -168,9 +172,18 @@ dataD <- file.path(sampleD, "data")
 resultD <- file.path(sampleD, "results", "guide_aln")
 dir.create(resultD, showWarnings = FALSE)
 
+# SET FASTQ FOLDER
+if(is.null(opt$fastqD)){
+  fastqD <- file.path(dataD, "fastq")
+}else{
+  fastqD <- opt$fastqD
+}
+
+
+
 # SET GUIDE SEQ
 
-if(opt$pipeline == "talen"){
+if(opt$pipeline == "talen" | opt$pipeline == "talen_overlap" | opt$pipeline == "double_nickase" | opt$pipeline == "double_nickase_overlap"){
 	refSeq.left <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaL))))
 	refSeq.right <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaR))))
 }else{
@@ -222,7 +235,11 @@ if(opt$saveReads == "yes"){
 ovlD <- file.path(homeD, "samples_overlap", opt$ovlDname)
 ovlName <- opt$ovlName
 
+# REMOVE TMP FILES
+rmTMP <- TRUE
 
+# COMPRESS RESULTS
+tozip <- TRUE
 
 
 ##########################################################################################
@@ -293,6 +310,39 @@ if(opt$species == "hg"){
 	#histoneFiles <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = TRUE)
 	#names(histoneFiles) <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = FALSE)
 	#names(histoneFiles) <- gsub(".broadPeak_hg38_homer.bed", "", names(histoneFiles))
+}else if(opt$species == "mm"){
+  #print_help(opt_parser)
+  #stop("mmul not yet compatible", call.=FALSE)
+  
+  # Macaca
+  require(org.Mm.eg.db)
+  require(BSgenome.Mmusculus.UCSC.mm10)
+  require(TxDb.Mmusculus.UCSC.mm10.knownGene)
+  TXDB <- TxDb.Mmusculus.UCSC.mm10.knownGene
+  ORG <- org.Mm.eg.db
+  ORG.STR <- "org.Mm.eg.db"
+  GNM <- BSgenome.Mmusculus.UCSC.mm10::Mmusculus
+  
+  # ANNOTATION DIRECTORY
+  annotD <- file.path(homeD, "annotations/Mus_musculus")
+  
+  # SET GENOME VERSION
+  myGenome.size <- file.path(annotD, "chrom.sizes")
+  
+  # HG38 TSS TES
+  geneMat <- read.delim(file.path(annotD, "Mm10_TSS_TES.txt"), header = FALSE)
+  
+  # SET ONCO ENTREZ LIST
+  oncoEntrez <- file.path(annotD, "CancerGenesList_ENTREZ.txt")
+  onco.width <- 3000
+  
+  # SET CIRCOS PLOT SPECIES
+  circos.sp <- "mm10"
+  
+  # SET HISTONE BROAD PEAKS FILES
+  #histoneFiles <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = TRUE)
+  #names(histoneFiles) <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = FALSE)
+  #names(histoneFiles) <- gsub(".broadPeak_hg38_homer.bed", "", names(histoneFiles))
 }else{
 	print_help(opt_parser)
 	stop("wrong species (must be hg).n", call.=FALSE)
@@ -306,6 +356,7 @@ if(opt$species == "hg"){
 source(file.path(scriptD, "fastq_aln.R"))
 source(file.path(scriptD, "bed2sequence.R"))
 source(file.path(scriptD, "bedTools_fct.R"))
+source(file.path(scriptD, "countReads.R"))
 source(file.path(scriptD, "delta.R"))
 source(file.path(scriptD, "cluster.R"))
 source(file.path(scriptD, "checkMAPQ.R"))
@@ -332,10 +383,26 @@ if(opt$pipeline == "talen"){
 	source(file.path(scriptD, "guide_alignmentDual.R"))
 }
 
+if(opt$pipeline == "talen_overlap"){
+  source(file.path(scriptD, "pipeline_TALENoverlap.R"))
+  source(file.path(scriptD, "guide_alignmentDual.R"))
+}
+
+if(opt$pipeline == "double_nickase"){
+  source(file.path(scriptD, "pipelineDoubleNickase.R"))
+  source(file.path(scriptD, "guide_alignmentDual.R"))
+}
+
+if(opt$pipeline == "double_nickase_overlap"){
+  source(file.path(scriptD, "pipelineDoubleNickase_overlap.R"))
+  source(file.path(scriptD, "guide_alignmentDual.R"))
+}
+
 ################     SET PYTHON FOR LCS    ################ 
 require(reticulate)
 #use_python("/home/gandri/miniconda3/bin/python")
 #use_python("/usr/bin/python")
+print(paste0("pythonPath: ", opt$pythonPath))
 use_python(opt$pythonPath)
 source_python(file.path(scriptD, "lcs.py"))
 
@@ -358,6 +425,12 @@ if(opt$pipeline == "crispr"){
 }else if(opt$pipeline == "talen_overlap"){
 	print("START TALEN OVERLAP PIPELINE")
 	runPipelineTALENoverlap()
+}else if(opt$pipeline == "double_nickase"){
+  print("START DOUBLE NICKASE PIPELINE")
+  runPipelineDoubleNickase()
+}else if(opt$pipeline == "double_nickase_overlap"){
+  print("START DOUBLE NICKASE OVERLAP PIPELINE")
+  runPipelineDoubleNickaseOverlap()
 }else{
   print_help(opt_parser)
   stop("wrong pipeline name. Must be crispr, crispr_2ot, overlap, talen or talen_overlap", call.=FALSE)
@@ -365,5 +438,4 @@ if(opt$pipeline == "crispr"){
 
 
 end_time <- Sys.time()
-
 end_time - start_time

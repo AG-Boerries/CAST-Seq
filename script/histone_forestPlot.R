@@ -228,7 +228,7 @@ histoneForestPlot <- function(inputF, randomF, histFiles)
 	dev.off()
 
 	write.xlsx(ggmat,
-		gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_histones_odd_ratio.xlsx", inputF), row.names = FALSE)
+		gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_histones_odd_ratio.xlsx", inputF), row.names = FALSE, overwrite = TRUE)
 }
 
 

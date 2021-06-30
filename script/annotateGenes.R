@@ -91,10 +91,10 @@ getOddMatrix <- function(test, ref)
 	colnames(OddMatrix) <- c("Region", "P.value", "Odd", "Conf.int.low", "Conf.int.high")
 	
 	OddMatrix <- as.data.frame(OddMatrix)
-	OddMatrix[,"P.value"] <- toNum(OddMatrix[,"P.value"])
-	OddMatrix[,"Odd"] <- toNum(OddMatrix[,"Odd"])
-	OddMatrix[,"Conf.int.low"] <- toNum(OddMatrix[,"Conf.int.low"])
-	OddMatrix[,"Conf.int.high"] <- toNum(OddMatrix[,"Conf.int.high"])
+	OddMatrix[,"P.value"] <- as.numeric(OddMatrix[,"P.value"])
+	OddMatrix[,"Odd"] <- as.numeric(OddMatrix[,"Odd"])
+	OddMatrix[,"Conf.int.low"] <- as.numeric(OddMatrix[,"Conf.int.low"])
+	OddMatrix[,"Conf.int.high"] <- as.numeric(OddMatrix[,"Conf.int.high"])
 	
 	return(OddMatrix)
 }
@@ -128,7 +128,7 @@ annotateGene <- function(inputFile)
 	readMat.merge <- readMat.merge[match(readMat$alignment.id, readMat.merge$alignment.id), ]
 	readMat.merge <- readMat.merge[, -1]# remove rownames
 
-	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE)
+	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE, overwrite = TRUE)
 }
 
 annotateGeneTALEN <- function(inputFile)
@@ -159,7 +159,7 @@ annotateGeneTALEN <- function(inputFile)
 	readMat.merge <- readMat.merge[match(readMat$alignment.id, readMat.merge$alignment.id), ]
 	readMat.merge <- readMat.merge[, -1]# remove rownames
 
-	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE)
+	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE, overwrite = TRUE)
 }
 
 
@@ -227,7 +227,7 @@ geneForestPlot <- function(inputFile, randomFile)
 
 	oddList <- lapply(tableList, getOddMatrix, ref = table.rd)
 
-	write.xlsx(oddList, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_odd_ratio.xlsx", inputFile))
+	write.xlsx(oddList, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_odd_ratio.xlsx", inputFile), overwrite = TRUE)
 
 	for(i in 1:length(oddList))
 		{
@@ -263,177 +263,7 @@ geneForestPlot <- function(inputFile, randomFile)
 
 if(FALSE)
 {
-############
-# FANCF TEST
 
-setwd(file.path("/home/gandri/offTargets/Giando/pipeline/FANCF_decoy_rep1/results/overlap_aln"))
-readMat <- read.xlsx("FANCF_decoy_ovl_w250.xlsx")
-readMat.gr <- makeGRangesFromDataFrame(readMat[, c("chromosome", "start", "end")],
-	keep.extra.columns = TRUE)
-
-readMat.anno.gr <- annotatePeak(readMat.gr, tssRegion=c(-3000, 3000), 
-							 TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all", level = "gene")
-
-#####################
-# LOAD READMAT
-
-#setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/alignment"))
-#sampleName <- "G3_W250"
-#setwd(sampleName)
-#readMat <- read.xlsx(paste0(sampleName, "_aln_stat_FLANK_GROUP.xlsx"), sheet = 1)
-
-
-setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/comparison/final/Giando"))
-readMat <- read.xlsx("cas9_union.xlsx")
-
-readMat.gr <- makeGRangesFromDataFrame(readMat[, c("chromosome", "start", "end")],
-	keep.extra.columns = TRUE)
-
-
-#############################
-# ANNOTATE PEAKS (chipseeker)
-
-# GET PROMOTER INFO
-#promoter <- getPromoters(TxDb=txdb, upstream=3000, downstream=3000)
-
-# Peak Annotation
-readMat.anno.gr <- annotatePeak(readMat.gr, tssRegion=c(-3000, 3000), 
-                         TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all", level = "gene")
-
-# Save annotation
-readMat.anno <-  as.data.frame(readMat.anno.gr)
-
-##############################
-# MERGE READMAT AND ANNOTATION
-
-rownames(readMat) <- readMat$alignment.id
-rownames(readMat.anno) <- readMat.anno$alignment.id
-
-readMat.merge <- merge(readMat, readMat.anno[,-c(1:6)], by=0, all=TRUE)
-readMat.merge <- readMat.merge[match(readMat$alignment.id, readMat.merge$alignment.id), ]
-
-
-#########################
-# ADD ONCOGENE ANNOTATION
-#setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/doc"))
-#oncoMat <- read.delim("allOnco_May2018.tsv")
-#onco <- as.character(oncoMat$symbol)
-
-#readMat.merge$isOnco <- NA
-#readMat.merge$isOnco[readMat.merge$SYMBOL %in% onco] <- "yes"
-#readMat.merge <- readMat.merge[,-1]
-
-# SAVE
-#setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/alignment"))
-#setwd(sampleName)
-#write.xlsx(readMat.merge, paste0(sampleName, "_aln_stat_FLANK_GROUP_GENES.xlsx"))
-
-
-##########################################################################################
-# GENE REGIONS PROPORTION
-
-readMat.merge <- read.xlsx(paste0(sampleName, "_aln_stat_FLANK_GROUP_GENES.xlsx"), sheet = 1)
-readMat.merge <- annotateExonIntron(readMat.merge)
-
-groups <- unique(readMat.merge$group)
-peakAnnoList <- lapply(groups, function(i)
-	readMat.merge[readMat.merge$group == i, ]
-	)
-names(peakAnnoList) <- groups	
-        
-
-
-#########
-# BARPLOT
-
-ggmat <- lapply(1:length(peakAnnoList), function(i)
-	data.frame(Regions = names(table(peakAnnoList[[i]]$annotation)),
-			   Percentage = table(peakAnnoList[[i]]$annotation) / nrow(peakAnnoList[[i]]) * 100,
-			   Group = names(peakAnnoList)[i])
-	)
-ggmat <- do.call(rbind, ggmat)	
-ggmat$Regions <- factor(ggmat$Regions, levels = rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)",
-	"5' UTR", "first Exon", "other Exon", "first Intron", "other Intron", "3' UTR",
-	"Downstream (<1kb)", "Downstream (1-2kb)", "Downstream (2-3kb)",
-	"Distal Intergenic"))
-	)
-ggmat$Group <- factor(ggmat$Group, levels = rev(c("OMT", "HMT", "NBS"))
-	)		
-			
-p <- ggplot(data=ggmat, aes(x=Regions, y=Percentage.Freq, fill=Group))
-p <- p + geom_bar(stat="identity", position=position_dodge())
-p <- p + theme_bw()	
-p <- p + coord_flip()
-
-pdf(paste0(sampleName, "_region_barplot.pdf"))
-plot(p)
-dev.off()
-
-############################################################
-# FOREST PLOT (COMPARE OUR REGIONS AGAINST RANDOM SEQUENCES)
-
-# Real 
-setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/comparison/final_060519"))
-readMat <- read.xlsx("cas9_UNION.xlsx")
-
-readMat.gr <- makeGRangesFromDataFrame(readMat[, c("chromosome", "start", "end")],
-	keep.extra.columns = TRUE)
-	
-readMat.anno <- annotatePeak(readMat.gr, tssRegion=c(-3000, 3000), 
-                         TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all")
-readMat.anno <- annotateExonIntron(as.data.frame(readMat.anno))
-
-# Random bed
-setwd(file.path("/Volumes/home/Geoffroy/offTargets/Giando/doc"))
-rdMat <- read.delim("random_w250.bed", header = FALSE)
-rdMat.gr <- makeGRangesFromDataFrame(rdMat,seqnames.field="V1", start.field = "V2",
-	end.field = "V3", strand.field = "V6",
-	keep.extra.columns = FALSE)
-
-# Peak Annotation
-rdMat.anno.gr <- annotatePeak(rdMat.gr, tssRegion=c(-3000, 3000), 
-                         TxDb=txdb, annoDb="org.Hs.eg.db", overlap = "all")
-rdMat.anno <- as.data.frame(rdMat.anno.gr)
-rdMat.anno <- annotateExonIntron(rdMat.anno)
-
-# Forest plot
-peakAnnoList <- list(cas9 = readMat.anno)
-tableList <- lapply(peakAnnoList, function(i) table(i$annotation))
-table.rd <- table(rdMat.anno$annotation)
-
-
-oddList <- lapply(tableList, getOddMatrix, ref = table.rd)
-
-setwd(file.path("/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/comparison/final_060519"))
-write.xlsx(oddList, "cas9_region_odd_ratio.xlsx")
-
-for(i in 1:length(oddList))
-	{
-	oddList[[i]]$Group <- names(oddList)[i]
-	}
-
-df <- do.call(rbind, oddList)
-
-# reverses the factor level ordering for labels after coord_flip()
-df$Region <- factor(df$Region, levels=rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)", "5' UTR",
-	"first Exon", "first Intron", "other Exon", "other Intron", "3' UTR", "Downstream (<1kb)", "Downstream (1-2kb)",
-	"Downstream (2-3kb)", "Distal Intergenic")))
-	
-#df$Region <- factor(df$Region, levels=rev(c("Promoter", "5' UTR",
-#	"Body", "3' UTR", "Downstream", "Distal Intergenic")))	
-
-fp <- ggplot(data=df, aes(x=Region, y=Odd, ymin=Conf.int.low, ymax=Conf.int.high, color = "black")) +
-        geom_pointrange(position = position_dodge(width = 0.5), color = "black") + 
-        geom_hline(yintercept = 0, lty = 2) +  # add a dotted line at x=1 after flip
-        coord_flip() +  # flip coordinates (puts labels on y axis)
-        xlab("Label") + ylab("Odds ratio (95% CI)") +
-        theme_bw()  # use a white background
-
-
-
-pdf("cas9_region_odd_ratio.pdf")
-plot(fp)
-dev.off()
 
 
 }

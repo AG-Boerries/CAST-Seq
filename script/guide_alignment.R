@@ -194,25 +194,42 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	# SAVE
 	dir.create(alnFolder, showWarnings = FALSE)
 
+	dir1 <- file.path(tempdir(), "tmpDIR")
+	dir.create(dir1)# TMP DIR
+	
+	guideTMP <- tempfile(tmpdir = dir1, fileext = ".txt")
+	
+	#writePairwiseAlignments(alnList[[1]],
+  # 	file = file.path(alnFolder, "guide_aln_TMP.txt"))
+	
 	writePairwiseAlignments(alnList[[1]],
-		file = file.path(alnFolder, "guide_aln_TMP.txt"))
+	                        file = guideTMP)
 
 	alnList <- alnList[-1]# remove refSeq alignment
 	names(alnList) <- paste0(inputName, "_aln", 1:length(alnList))	
 
-	lapply(1:length(alnList), function(i) writePairwiseAlignments(alnList[[i]],
-		file = file.path(alnFolder, paste0(names(alnList)[i], "_TMP.txt")))
-		)	
+	tmpFiles <- sapply(1:length(alnList), function(i) tempfile(tmpdir = dir1, fileext = ".txt"))
+	
+	lapply(1:length(alnList), function(i){
+	  
+	  #writePairwiseAlignments(alnList[[i]],
+	  #                       file = file.path(alnFolder, paste0(names(alnList)[i], "_TMP.txt")))
+	  writePairwiseAlignments(alnList[[i]], file = tmpFiles[i])
+	  
+	})
+	
 
 	# GET PROPER ALIGNMENT (FIX ISSUE WITH INDEL IN FIRST / LAST POSITION)
-	alnFiles <- list.files(alnFolder, pattern = "_TMP.txt")
-	names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
+	#alnFiles <- list.files(alnFolder, pattern = "_TMP.txt")
+	#names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
 
-	alnFiles <- alnFiles[names(alnList)]# Re-order
+	#alnFiles <- alnFiles[names(alnList)]# Re-order
 	
-	alnList.str <- lapply(alnFiles, function(i)
-		getStrAlignment(file.path(alnFolder, i))
-		)
+	#alnList.str <- lapply(alnFiles, function(i)
+  #	getStrAlignment(file.path(alnFolder, i))
+	#	)
+	
+	alnList.str <- lapply(tmpFiles, getStrAlignment)
 
 	alnMat <- do.call(rbind, alnList.str)# 1st column: test, 2nd column: ref
 
@@ -222,28 +239,32 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 		))
 
 	# START POSITION IN TEST SEQUENCE
-	alnStart <- as.numeric(unlist(lapply(alnFiles, function(i)
-		getStartPosition(file.path(alnFolder, i)))))
+	#alnStart <- as.numeric(unlist(lapply(alnFiles, function(i)
+	#	getStartPosition(file.path(alnFolder, i)))))
+	
+	alnStart <- as.numeric(unlist(lapply(tmpFiles, function(i)
+	  getStartPosition(i))))
 
 	# RELATIVE COORDINATES
 	middleCoord <- floor((readMat$end - readMat$start) / 2)
 	middleCoord.abs <- readMat$start + middleCoord
 	alnStart.rel <- alnStart - middleCoord
-
+	alnStart.abs <- alnStart + readMat$start
+	
 	# STATISTIC
 	statList <- lapply(alnList, getAlnStat)
 	statMat <- do.call(rbind, statList)
-	statMat <- cbind(names(alnList), alnMat, alnSum, statMat, refSeqList, middleCoord.abs, alnStart.rel)
+	statMat <- cbind(names(alnList), alnMat, alnSum, statMat, refSeqList, middleCoord.abs, alnStart.abs, alnStart.rel)
 	colnames(statMat) <- c("alignment.id", "pattern", "subject", "aln.sum", "score", "sq.hom", "nb.mism",
-		"nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "aln.guide", "middleCoord", "aln.start.rel")
+		"nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "aln.guide", "middleCoord", "aln.start.abs", "aln.start.rel")
 	
 	# MERGE READMAT AND STATMAT
 	readMat.stat <- cbind(readMat, statMat)	
 	readMat.stat[, c("score", "sq.hom", "nb.mism",
-		"nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.rel")] <- apply(readMat.stat[, c("score", "sq.hom", "nb.mism", "nb.ins",
-			"length.ins", "nb.del", "length.del", "middleCoord", "aln.start.rel")], 2, as.numeric)	
+		"nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")] <- apply(readMat.stat[, c("score", "sq.hom", "nb.mism", "nb.ins",
+			"length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")], 2, as.numeric)	
 
-	write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")))	
+	write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")), overwrite = TRUE)	
 
 	# Density plot
 	pdf(file.path(alnFolder, paste0(inputName, "_aln_stat_density.pdf")))
@@ -265,16 +286,20 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	hist(readMat.stat$nb.del, main = "Nb. deletion")
 	hist(readMat.stat$aln.start.rel, main = "Aln. relative start")
 	dev.off()
-
+	
+	# DELETE TMP DIR
+	unlink(dir1, recursive = T)
 }
 
-guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL)
+guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE)
 {
 	###################
 	# DISPLAY ALIGNMENT
 	
 	# READ INPUT FILE
 	readMat.stat <- read.xlsx(inputFile)
+	
+	if(OMTonly) readMat.stat <- readMat.stat[readMat.stat$group == "OMT", ]
 
 	# FILTER TOP SCORE
 	readMat.stat <- readMat.stat[order(-readMat.stat$score), ]
@@ -301,9 +326,12 @@ guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
 		ref.display[seq(2, 46, by = 2)] <- "0"
 	
 		alnDisplay <- rbind(GUIDE = ref.display, alnDisplay)
-
-		write.xlsx(alnDisplay, gsub(".pdf", ".xlsx", outputFile), row.names = TRUE)
-
+		alnDisplay <- data.frame(alnDisplay)
+		
+		write.xlsx(alnDisplay, gsub(".pdf", ".xlsx", outputFile), row.names = TRUE, overwrite = TRUE)
+		#write.table(alnDisplay, gsub(".pdf", ".txt", outputFile), row.names = TRUE, sep = "\t", quote = FALSE)
+		
+		
 		# HEATMAP
 		ggmat <- data.table::melt(data.table(cbind(sq = rownames(alnDisplay), alnDisplay)), id.vars = "sq")
 

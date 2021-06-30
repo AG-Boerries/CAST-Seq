@@ -26,7 +26,6 @@ bed2sequence <- function(bedMat, g=BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
 	return(sqList)
 }
 
-
 bed2sequence.hg19 <- function(bedMat)
 {
 	require(BSgenome.Hsapiens.UCSC.hg19)

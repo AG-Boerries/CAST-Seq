@@ -69,7 +69,10 @@ groupSummary(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
 	hits = NULL,
 	score = NULL, pv = NULL
 	)	
-		 
+	
+guidePlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
+          file.path(ovlD, paste0(ovlName, "_aln_heatmap_OMT.pdf")),
+          score = NULL, pv = NULL, ref = refSeq, OMTonly = TRUE)# ALL	 
 			 
 ################     PIE CHARTS    ###############
 print("################     PIE CHARTS    ###############")
@@ -104,7 +107,7 @@ addGenes(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
 	
 ################     RETURN FINAL XLSX FILE    ################ 
 print("################     RETURN FINAL XLSX FILE    ################")
-finalize(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")))	
+finalizeOverlap(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")))	
 		
 
 
@@ -133,6 +136,89 @@ chrPlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
 chrPlotAside(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
 	file.path(ovlD, paste0(ovlName, "_aln_chrPlot")), hits = NULL, score = NULL, pv = NULL)
 
+##########################################################################################
+############                        CHR PLOT (CIRCLIZE)                       ############
+##########################################################################################
+print("############    CHR PLOT (CIRCLIZE)    ############")
+################     CHR PLOT (CIRCLIZE)    ################ 
+
+tryCatch(
+    {
+	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                   zoom.size = 25000, label = FALSE, 
+                   PV.cutoff = NULL,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = TRUE,
+                   gene.bed = NULL, ots.bed = otsBed, 
+                   realigned = TRUE,
+                   outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                   species = circos.sp)
+                   
+    },
+    error = function(e){
+		print("no sites on defined otsBed, use max gRNA score")
+	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                   zoom.size = 25000, label = FALSE, 
+                   PV.cutoff = NULL,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = TRUE,
+                   gene.bed = NULL, ots.bed = NULL, 
+                   outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                   species = circos.sp)
+    }
+	)
+  
+  
+  tryCatch(
+    {
+	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                 zoom.size = 25000, label = FALSE, 
+                 PV.cutoff = NULL,
+                 bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                 showNBS = FALSE,
+                 gene.bed = NULL, ots.bed = otsBed, 
+                 realigned = TRUE,
+                 outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                 species = circos.sp)
+                   
+    },
+    error = function(e){
+		print("no sites on defined otsBed, use max gRNA score")
+	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                 zoom.size = 25000, label = FALSE, 
+                 PV.cutoff = NULL,
+                 bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                 showNBS = FALSE,
+                 gene.bed = NULL, ots.bed = NULL, 
+                 outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                 species = circos.sp)
+    }
+	)
+                                 
+
+##########################################################################################
+############                           HITS BARPLOT                           ############
+##########################################################################################
+print("############    HITS BARPLOT    ############")
+
+hitsBarplot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+            pv = NULL, top = 50, showNBS = TRUE, log = TRUE,
+            outName = file.path(ovlD, paste0(ovlName, "_hits_barplot.pdf")))
+hitsBarplot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+            pv = NULL, top = 50, showNBS = FALSE, log = TRUE,
+            outName = file.path(ovlD, paste0(ovlName, "_hits_barplot_woNBS.pdf")))
+
+##########################################################################################
+############                        REMOVE TMP FILES                          ############
+##########################################################################################
+
+if(rmTMP){
+  print("############    REMOVE TMP FILES    ############")
+  mypattern <- c("_aln_stat_FLANK_GROUP_GENES.xlsx$", "_aln_stat_FLANK_GROUP.xlsx$",
+                 "_aln_stat_FLANK.xlsx$", "_aln_stat.xlsx$")
+  torm <- unlist(lapply(mypattern, function(mp) list.files(ovlD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+  file.remove(torm)
+}
 
 
 

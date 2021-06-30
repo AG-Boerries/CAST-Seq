@@ -64,7 +64,7 @@ addFlanking <- function(inputFile, otBed, size)
 						  flank.rev = unlist(sq.rev.match),
 						  flank.rev.length = length.rev		  
 						  ) 
-	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile))
+	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile), overwrite = TRUE)
 }
 
 
@@ -127,7 +127,7 @@ addFlankingFromSq <- function(inputFile, hom.sq, hom.sq2 = NULL)
 		flankSm <- cbind(flankSm, flankSm2)					  
 	}					  
 						  
-	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile))
+	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile), overwrite = TRUE)
 }
 
 ############################################

@@ -264,7 +264,9 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	write.table(scoreN.mat, file.path(alnFolder, paste0(inputName, "_score_matrix.txt")), sep = "\t", quote = FALSE, row.names = TRUE)
 	
 	# Plot score boxplot
-	ggmat <- melt(scoreN.mat)
+	#ggmat <- melt(scoreN.mat)
+	ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
+	colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var2 <- factor(ggmat$Var2, levels = rev(names(sort(colMeans(scoreN.mat)))))
 	
 	p <- ggplot(ggmat, aes(x = Var2, y = value))
@@ -276,8 +278,11 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	plot(p)
 	dev.off()
 	
-	scoreN.mat <- scoreN.mat[order(-rowMeans(scoreN.mat)), ]
-	ggmat <- melt(scoreN.mat[1:10, ])
+	scoreN.mat <- scoreN.mat[order(-rowMeans(scoreN.mat)), , drop = FALSE]
+	scoreN.mat <- scoreN.mat[1:min(c(10, nrow(scoreN.mat))), , drop = FALSE]
+	#ggmat <- melt(scoreN.mat[1:min(c(10, nrow(scoreN.mat))), ])
+	ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
+	colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var1 <- factor(ggmat$Var1, levels = rev(names(sort(rowMeans(scoreN.mat)))))
 		
 	p <- ggplot(ggmat, aes(x = Var1, y = value))
@@ -290,7 +295,9 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	dev.off()
 		
 	# Plot N boxplot
-	ggmat <- melt(alnN.mat)
+	#ggmat <- melt(alnN.mat)
+	ggmat <- pivot_longer(data.table(ID = rownames(alnN.mat), alnN.mat), !ID)
+	colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var2 <- factor(ggmat$Var2, levels = rev(names(sort(colMeans(alnN.mat)))))
 	
 	p <- ggplot(ggmat, aes(x = Var2, y = value))
@@ -306,26 +313,42 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	# SAVE
 	dir.create(alnFolder, showWarnings = FALSE)
 	#alnList <- alnList[-1]# remove refSeq alignment
-
+	
+	dir1 <- file.path(tempdir(), "tmpDIR")
+	dir.create(dir1)# TMP DIR
+	
+	tmpFilesList <- lapply(1:length(alnList), function(i){
+	  dir.create(file.path(dir1, names(alnList)[i]), showWarnings = FALSE)
+	  
+	  sapply(1:length(alnList[[i]]), function(j) tempfile(tmpdir = file.path(dir1, names(alnList)[i]), fileext = ".txt"))
+	})
+	names(tmpFilesList) <- names(alnList)
+	
 	lapply(1:length(alnList), function(j){
-		dir.create(file.path(alnFolder, names(alnList)[j]), showWarnings = FALSE)
+
 		lapply(1:length(alnList[[j]]), function(i){
-			writePairwiseAlignments(alnList[[j]][[i]],
-				file = file.path(alnFolder, names(alnList)[j], paste0(names(alnList[[j]])[i], "_TMP.txt")))
+			writePairwiseAlignments(alnList[[j]][[i]], file = tmpFilesList[[j]][[i]])
 			})		
 		})
 
 	statMatList <- lapply(names(alnList), function(i){
 		# GET PROPER ALIGNMENT (FIX ISSUE WITH INDEL IN FIRST / LAST POSITION)
 		refSeqFolder <- i
-		alnFiles <- list.files(file.path(alnFolder, refSeqFolder), pattern = "_TMP.txt")
-		names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
+		
+		#alnFiles <- list.files(file.path(alnFolder, refSeqFolder), pattern = "_TMP.txt")
+		#names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
 
-		alnFiles <- alnFiles[names(alnList[[refSeqFolder]])]# Re-order
+		#alnFiles <- alnFiles[names(alnList[[refSeqFolder]])]# Re-order
 	
-		alnList.str <- lapply(alnFiles, function(i)
-			getStrAlignment(file.path(alnFolder, refSeqFolder, i))
-			)
+		tmpFiles <- tmpFilesList[[i]]
+
+		#alnList.str <- lapply(alnFiles, function(i)
+ 	 #		getStrAlignment(file.path(alnFolder, refSeqFolder, i))
+	 #		)
+		
+		alnList.str <- lapply(tmpFiles, function(i)
+				getStrAlignment(i)
+				)
 
 		alnMat <- do.call(rbind, alnList.str)# 1st column: test, 2nd column: ref
 	
@@ -338,24 +361,25 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 			))
 
 		# START POSITION IN TEST SEQUENCE
-		alnStart <- as.numeric(unlist(lapply(alnFiles, function(i)
-			getStartPosition(file.path(alnFolder, refSeqFolder, i)))))
+		alnStart <- as.numeric(unlist(lapply(tmpFiles, function(i)
+			getStartPosition(i))))
 
 		# RELATIVE COORDINATES
 		middleCoord <- floor((readMat$end - readMat$start) / 2)
 		middleCoord.abs <- readMat$start + middleCoord
 		alnStart.rel <- alnStart - middleCoord
+		alnStart.abs <- alnStart + readMat$start
 
 		# STATISTIC
 		statList <- lapply(alnList[[refSeqFolder]], getAlnStat)
 		statMat <- do.call(rbind, statList)
-		statMat <- cbind(alnMat, alnSum, alnN, statMat, middleCoord.abs, alnStart.rel)
+		statMat <- cbind(alnMat, alnSum, alnN, statMat, middleCoord.abs, alnStart.abs, alnStart.rel)
 		colnames(statMat) <- c("pattern", "subject", "aln.sum", "N", "score", "sq.hom", "nb.mism",
-			"nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "middleCoord", "aln.start.rel")
+			"nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "middleCoord", "aln.start.abs", "aln.start.rel")
 		statMat <- as.data.frame(statMat)
-		statMat[, c("N", "score", "sq.hom", "nb.mism", "nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.rel")] <- apply(
+		statMat[, c("N", "score", "sq.hom", "nb.mism", "nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")] <- apply(
 					statMat[, c("N", "score", "sq.hom", "nb.mism", "nb.ins",
-					"length.ins", "nb.del", "length.del", "middleCoord", "aln.start.rel")], 2, as.numeric)
+					"length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")], 2, as.numeric)
 	
 		colnames(statMat) <- paste(refSeqFolder, colnames(statMat), sep = "_")
 		return(statMat)
@@ -368,7 +392,7 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	readMat.stat <- cbind(readMat,
 						  alignment.id = paste0(inputName, "_aln", 1:nrow(readMat)),
 						  statMat)	
-	write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")))	
+	write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")), overwrite = TRUE)	
 
 	# Density plot
 	#pdf(file.path(alnFolder, paste0(inputName, "_aln_stat_density.pdf")))
@@ -390,6 +414,17 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	#hist(readMat.stat$nb.del, main = "Nb. deletion")
 	#hist(readMat.stat$aln.start.rel, main = "Aln. relative start")
 	#dev.off()
+	
+	# RM TMP FILES
+	#unlink(file.path(alnFolder, c("LF.LR", "LF.RF", "LF.RR", "LR.RF", "LR.RR", "RF.RR",
+	#                              "LR.LF", "RF.LF", "RR.LF", "RF.LR", "RR.LR", "RR.RF",
+	#                              "LF.LF", "LR.LR", "RF.RF", "RR.RR")),
+	#       recursive = TRUE)
+	
+	
+	# DELETE TMP DIR
+	unlink(dir1, recursive = T)
+	
 }
 
 
@@ -422,7 +457,7 @@ assignPV <- function(realF, rdF)
 	colnames(qvMat) <- gsub("pv", "adj.pv", colnames(qvMat))
 	
 	realM.pv <- cbind(realM, pvMat, qvMat)
-	write.xlsx(realM.pv, realF, row.names = FALSE)
+	write.xlsx(realM.pv, realF, row.names = FALSE, overwrite = TRUE)
 }
 
 
@@ -477,8 +512,97 @@ assignBestCombination <- function(inputFile)
 	bestCb <- unlist(bestCb)
 	
 	readMat$BestCB <- bestCb
-	write.xlsx(readMat, inputFile)
+	
+	bestCbN <- sapply(1:length(bestCb), function(i){
+	  if(is.na(bestCb[i])) return(NA)
+	  
+	  return(as.numeric(readMat[i, paste0(bestCb[i], "_N")]))
+	})
+	readMat$N.BestCB <- bestCbN
+	
+	write.xlsx(readMat, inputFile, overwrite = TRUE)
 }
+
+assignBestCombinationDoubleNickase <- function(inputFile)
+{
+  cmb <- c("LF.LR", "LF.RF", "LF.RR", "LR.RF", "LR.RR", "RF.RR",
+           "LR.LF", "RF.LF", "RR.LF", "RF.LR", "RR.LR", "RR.RF",
+           "LF.LF", "LR.LR", "RF.RF", "RR.RR")
+  
+  readMat <- read.xlsx(inputFile, sheet = 1)
+  #lapply(cmb, function(i) grep(i, colnames(readMat)))
+  
+  dMat <- readMat[, grep("_aln.start.rel$", colnames(readMat))]
+  nMat <- readMat[, grep("_N$", colnames(readMat))]
+  cbName <- unlist(lapply(strsplit(colnames(nMat), split = "_"), function(i) i[1]))
+  
+  isMono <- paste0(substring(cbName, 2, 2), substring(cbName, 5, 5)) %in% c("FF", "RR")
+  
+  bestCb <- lapply(1:nrow(readMat), function(i){
+
+    qv <- as.numeric(readMat[i, grep("_adj.pv$", colnames(readMat))])
+    names(qv) <- cbName
+    
+    gRNAscore <- as.numeric(readMat[i, grep("_score$", colnames(readMat))])
+    names(gRNAscore) <- cbName
+    
+    if(min(qv) > 0.1) return(NA)
+    
+    signifIdx <- which(qv <= 0.1)
+    
+    if(length(signifIdx) == 1) return(cbName[signifIdx])
+    
+    qv.sub <- qv[signifIdx]
+    gRNAscore.sub <- gRNAscore[signifIdx]
+    dMat.sub <- dMat[i,signifIdx]
+    nMat.sub <- nMat[i,signifIdx]
+    cbName.sub <- cbName[signifIdx]
+    isMono.sub <- isMono[signifIdx]
+    
+    maxScore <- max(gRNAscore.sub)
+    maxScoreIdx <- which(gRNAscore.sub == maxScore)
+    
+    if(length(maxScoreIdx) == 1) return(cbName.sub[maxScoreIdx])
+    
+    qv.sub <- qv.sub[maxScoreIdx]
+    gRNAscore.sub <- gRNAscore.sub[maxScoreIdx]
+    dMat.sub <- dMat.sub[maxScoreIdx]
+    nMat.sub <- nMat.sub[maxScoreIdx]
+    cbName.sub <- cbName.sub[maxScoreIdx]
+    isMono.sub <- isMono.sub[maxScoreIdx]
+    
+    score <- unlist(lapply(1:length(maxScoreIdx), function(j){
+      score.current <- 0
+      if(nMat.sub[, j] < 10){score.current <- score.current + 1
+      }else if(nMat.sub[, j] < 20) score.current <- score.current + 2
+      
+      if(abs(dMat.sub[, j]) < 50) score.current <- score.current + 1
+      
+      if(!isMono.sub[j]) score.current <- score.current + 1
+      #if(isMono.sub[j]) score.current <- score.current - 1
+      
+      return(score.current)		
+    }))
+    names(score) <- names(qv.sub)
+    
+    qv.sub.sub <- qv.sub[names(score)[score == max(score)]]
+    
+    return(names(qv.sub.sub[order(qv.sub.sub)])[1])
+  })
+  bestCb <- unlist(bestCb)
+  
+  readMat$BestCB <- bestCb
+  
+  bestCbN <- sapply(1:length(bestCb), function(i){
+    if(is.na(bestCb[i])) return(NA)
+    
+    return(as.numeric(readMat[i, paste0(bestCb[i], "_N")]))
+  })
+  readMat$N.BestCB <- bestCbN
+  
+  write.xlsx(readMat, inputFile, overwrite = TRUE)
+}
+
 
 
 plotSites <- function(inputF, siteIdx, outputF)
@@ -525,5 +649,18 @@ plotSites <- function(inputF, siteIdx, outputF)
 ###                                      ###
 ############################################
 
-
+if(FALSE){
+  # TEST
+  require(BSgenome.Hsapiens.UCSC.hg38)
+  require(openxlsx)
+  NBCPU <- 4
+  inputF <- file.path("/Users/geoffroyandrieux/Research/CASTSeq/pipelineGit/samples/data_180521/KRT9/KRT9-T3_g1/results/guide_aln/KRT9-T3_w250_FINAL.xlsx")
+  guideLeft <- toupper("CCGAGAATTGAGTTCCTGCANRG")
+  guideRight <- toupper("CTCTTACTTGGATAAGGTGCNRG")
+  alnFolder <- file.path("~/Research/CASTSeq/test")
+  getGuideAlignmentDual(inputF, guideLeft, guideRight, alnFolder, BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
+  
+  
+  
+}
 

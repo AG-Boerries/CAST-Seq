@@ -14,11 +14,18 @@ fastqAln(functionstring=paste0("sh ", file.path(scriptD,"fastq_aln.sh")),
 	homeFolder = homeD,
 	annotFolder = annotD,
 	sampleFolder = sampleDname,
+	fastqFolder = fastqD,
 	testSample = sampleName,
 	utSample = controlName,
 	cpu = NBCPU
 	)	
 	
+print("################     COUNT READS    ################")
+countReads(fastqFolder = fastqD,
+           sampleFolder = sampleD,
+           testSample = sampleName,
+           utSample = controlName)
+
 }
 
 ################     DELTA AND HITS    ################ 
@@ -32,9 +39,9 @@ sampleBed <- file.path(resultD, paste0(sampleName, "_Alignment.bed"))
 controlBed <- file.path(resultD, paste0(controlName, "_Alignment.bed"))	
 	   
 # run delta analysis
-getDelta(sampleBed, otsBed, otsDistance)		   
+getDelta(sampleBed, otsBed, otsDistance, distance = distance.cutoff)		   
 getDeltaShuffle(gsub(".bed$", "_delta.bed", sampleBed), nb = 10, distance = distance.cutoff, genome.size = myGenome.size)				   
-getDelta(controlBed, otsBed, otsDistance)		   
+getDelta(controlBed, otsBed, otsDistance, distance = distance.cutoff)		   
 getDeltaShuffle(gsub(".bed$", "_delta.bed", controlBed), nb = 10, distance = distance.cutoff, genome.size = myGenome.size)		
 
 # Density without on-target sites
@@ -48,8 +55,11 @@ getHits(gsub(".bed$", "_delta.bed", controlBed), distance.cutoff)
 ################     TEST VS. CONTROL ENRICHMENT    ################
 print("################     TEST VS. CONTROL ENRICHMENT    ################")
 # USE RAW FASTQ FILE !!!!!!!!!
-nbReads.sample <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz"))))
-nbReads.control <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz"))))
+#nbReads.sample <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz"))))
+#nbReads.control <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz"))))
+
+nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz"))))
+nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz"))))
 
 doEnrichment(gsub(".bed$", "_hits.bed", sampleBed), gsub(".bed$", "_hits.bed", controlBed),
 			 nbReads.sample, nbReads.control, w, myGenome.size)
@@ -359,6 +369,121 @@ if(saveReads){
 			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_AlignmentSort.bam")))	
 }
 
+
+##########################################################################################
+############                        CHR PLOT (CIRCLIZE)                       ############
+##########################################################################################
+if(filtName != ""){
+  print("############    CHR PLOT (CIRCLIZE)    ############")
+  ################     CHR PLOT (CIRCLIZE)    ################ 
+  
+	tryCatch(
+    	{
+ 	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                   zoom.size = 25000, label = FALSE, 
+                   PV.cutoff = pv.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = TRUE,
+                   gene.bed = NULL, ots.bed = otsBed, 
+                   realigned = TRUE,
+                   outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k.pdf")),
+                   species = circos.sp)
+    },
+    error = function(e){
+	print("no sites on defined otsBed, use max gRNA score")
+		
+	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                   zoom.size = 25000, label = FALSE, 
+                   PV.cutoff = pv.cutoff,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = TRUE,
+                   gene.bed = NULL, ots.bed = NULL, 
+                   realigned = FALSE,
+                   outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k.pdf")),
+                   species = circos.sp)
+		    }
+	)
+	
+	
+	tryCatch(
+    	{
+  	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                        zoom.size = 25000, label = FALSE, 
+                        PV.cutoff = pv.cutoff,
+                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                        showNBS = FALSE,
+                        gene.bed = NULL, ots.bed = otsBed, 
+                        realigned = TRUE,
+                        outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k_woNBS.pdf")),
+                        species = circos.sp)
+                        
+    },
+    error = function(e){
+	print("no sites on defined otsBed, use max gRNA score")
+		
+  	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                        zoom.size = 25000, label = FALSE, 
+                        PV.cutoff = pv.cutoff,
+                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                        showNBS = FALSE,
+                        gene.bed = NULL, ots.bed = NULL, 
+                        realigned = FALSE,
+                        outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k_woNBS.pdf")),
+                        species = circos.sp)            
+		    }
+	)
+	
+	
+
+}
+
+##########################################################################################
+############                           HITS BARPLOT                           ############
+##########################################################################################
+print("############    HITS BARPLOT    ############")
+
+hitsBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
+            pv = pv.cutoff, top = 50, showNBS = TRUE, log = TRUE,
+            outName = file.path(guideD, paste0(sampleName, "_w", w, "_hits_barplot.pdf")))
+hitsBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
+            pv = pv.cutoff, top = 50, showNBS = FALSE, log = TRUE,
+            outName = file.path(guideD, paste0(sampleName, "_w", w, "_hits_barplot_woNBS.pdf")))
+
+##########################################################################################
+############                        REMOVE TMP FILES                          ############
+##########################################################################################
+
+if(rmTMP){
+  print("############    REMOVE TMP FILES    ############")
+  mypattern <- c("_final.fastq.gz$", "_Filt3_neg.fastq.gz$", "_trim2.fastq.gz$",
+                 "_trim1.fastq.gz$", "_Filt2.fastq.gz$", "_pos.fastq.gz$", "_pos_NOmatch.fastq.gz$",
+                 "_merged.fastq.gz$", ".unassembled.reverse.fastq.gz$", ".unassembled.forward.fastq.gz$",
+                 "_assembled.fastq.gz$", "_unassembled.R1.fastq.gz$", "_unassembled.R2.fastq.gz", 
+                 ".assembled.fastq.gz$", ".discarded.fastq$")
+  torm <- unlist(lapply(mypattern, function(mp) list.files(sampleD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+  file.remove(torm)
+  
+  mypattern <- c("_aln_stat_FLANK_GROUP_GENES.xlsx$", "_aln_stat_FLANK_GROUP.xlsx$",
+                 "_aln_stat_FLANK.xlsx$", "_aln_stat.xlsx$")
+  torm <- unlist(lapply(mypattern, function(mp) list.files(guideD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+  file.remove(torm)
+}
+
+
+##########################################################################################
+############                        COMPRESS RESULTS                          ############
+##########################################################################################
+
+if(tozip){
+  print("############    COMPRESS RESULTS    ############")
+  setwd(file.path(sampleD, "results"))
+  zip.files <- c("guide_aln",
+                 file.path("fastq_aln", paste0(sampleName, "_QC.xlsx"))
+                 #file.path("fastq_aln", paste0(sampleName, "_pipeline.log")),
+                 #file.path("fastq_aln", paste0(controlName, "_pipeline.log"))
+  )
+  utils::zip(zipfile = file.path(paste0(sampleName, "_CASTseq.zip")), files = zip.files)
+}
 
 
 }

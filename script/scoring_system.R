@@ -217,7 +217,7 @@ addScore <- function(inputF, randomF, cutoff, otsF, distance)
 	readMat$HR.score <- getHRscore(inputF, randomF, cutoff, otsF, distance)
 	readMat$CBS.score <- getCBSscore(inputF, randomF, cutoff, otsF, distance)
 
-	write.xlsx(readMat, gsub(".xlsx", "_SCORE.xlsx", inputF), row.names = FALSE)
+	write.xlsx(readMat, gsub(".xlsx", "_SCORE.xlsx", inputF), row.names = FALSE, overwrite = TRUE)
 }
 
 scoreDensity <- function(inputF)
@@ -304,7 +304,7 @@ addScoreTALEN <- function(inputF, randomF, cutoff, otsF, distance)
 	readMat$HR.score <- getHRscore(inputF, randomF, cutoff, otsF, distance)
 	readMat$CBS.score <- getCBSscore(inputF, randomF, cutoff, otsF, distance)
 
-	write.xlsx(readMat, gsub(".xlsx", "_SCORE.xlsx", inputF), row.names = FALSE)
+	write.xlsx(readMat, gsub(".xlsx", "_SCORE.xlsx", inputF), row.names = FALSE, overwrite = TRUE)
 }
 
 ############################################

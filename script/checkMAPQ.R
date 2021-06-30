@@ -33,5 +33,5 @@ addMAPQ <- function(inputF, bamFile)
 		})
 	
 	readMat$avg.MAPQ <- as.numeric(unlist(mpq))
-	write.xlsx(readMat, inputF, row.names = FALSE)
+	write.xlsx(readMat, inputF, row.names = FALSE, overwrite = TRUE)
 }
