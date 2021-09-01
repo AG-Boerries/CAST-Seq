@@ -73,7 +73,7 @@ getOddMatrix <- function(test, ref)
 	return(OddMatrix)
 }
 
-toNum <- function(x) as.numeric(levels(x))[x]
+#toNum <- function(x) as.numeric(levels(x))[x]
 
 
 getNbOverlap <- function(query, subject)

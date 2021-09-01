@@ -21,6 +21,26 @@ getEmpiricalPV <- function(x, y, type)
     return(NA)    
 }
 
+
+getONidx <- function(realM, otsF){
+  
+  ots.df <- read.delim(otsF, header = FALSE)
+  ots.df <- ots.df[1,,drop = FALSE]# only take the first ON target into account
+  ots.gr <- makeGRangesFromDataFrame(ots.df,
+                                     seqnames.field = "V1", start.field = "V2", end.field = "V3",
+                                     keep.extra.columns = FALSE, ignore.strand = TRUE)
+  realM.gr <- makeGRangesFromDataFrame(realM,
+                                       seqnames.field = "chromosome", start.field = "start", end.field = "end",
+                                       keep.extra.columns = FALSE, ignore.strand = TRUE)
+  
+  gr.ovl <- findOverlaps(query = ots.gr, subject = realM.gr, type = "any", maxgap = 0)
+
+  isON <- rep(NA, nrow(realM))
+  isON[subjectHits(gr.ovl)] <- "yes"
+  
+  return(isON)
+}
+
 assignGroups <- function(realF, rdF, otsF, cutoff)
 {
 	ots <- read.delim(otsF, header = FALSE)
@@ -158,8 +178,10 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 		if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
 		}
 	
-	
 	realM$group <- mygroups
+	
+	realM$is.ON <- getONidx(realM, otsF)
+	
 	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	
@@ -240,6 +262,9 @@ assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
 	
 	
 	realM$group <- mygroups
+	
+	realM$is.ON <- getONidx(realM, otsF)
+	
 	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	
@@ -298,6 +323,9 @@ assignGroupsTALEN <- function(realF, rdF, otsF, cutoff)
 	if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
 	
 	realM$group <- mygroups
+	
+	realM$is.ON <- getONidx(realM, otsF)
+	
 	realM$is.HMT <- mygroups2
 	realM$is.large.del. <- mygroups3
 	

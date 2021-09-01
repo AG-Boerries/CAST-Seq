@@ -1,9 +1,12 @@
 
 
 
-#toNUM <- function(x) as.numeric(levels(x))[x]
+toNUM <- function(x) as.numeric(levels(x))[x]
+
+
 
 # TO DO: get DELTA, use grange to intersect ots and sites, remove everything +/- otsD of ots
+
 
 getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 {
@@ -133,7 +136,7 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 	toxlsx <- data.frame(distance = distance,
 	                     bellow.percentage = bellow.pc,
 	                     above.percentage = above.pc)
-	write.xlsx(toxlsx, paste0(inputName, "_delta_density_RAW.xlsx"), overwrite = TRUE)
+	write.xlsx(toxlsx, paste0(inputName, "_delta_density_RAW.xlsx"))
 	
 	bed5 <- cbind(bed4, delta)
 	colnames(bed5) <- c("chromosome", "start", "end", "strand", "read", "delta")
@@ -159,7 +162,7 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 	
 	
 	# Remove ON-target reads NEW
-	if(!is.null(otsF) & otsD != 0){
+	if(!is.null(otsF)){
 		bed <- bed.raw
 		
 		print(paste0("Remove ON-target reads +/- ", otsD, "bp"))
@@ -269,10 +272,6 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 		}
 	
 	
-	}else{
-	  print(paste0("otsF = ", otsF))
-	  print(paste0(" otsD = ", otsD))
-	  print(paste0("bed.raw: ", nrow(bed.raw)))
 	}
 	# Plot delta density
 	#pdf(paste0(inputName, "_delta_density.pdf"))
@@ -301,7 +300,7 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 	toxlsx <- data.frame(distance = distance,
 	                     bellow.percentage = bellow.pc,
 	                     above.percentage = above.pc)
-	write.xlsx(toxlsx, paste0(inputName, "_delta_density.xlsx"), overwrite = TRUE)
+	write.xlsx(toxlsx, paste0(inputName, "_delta_density.xlsx"))
 	
 	
 	bed5 <- cbind(bed4, delta)
@@ -453,7 +452,7 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 	toxlsx <- data.frame(distance = distance,
 	                     bellow.percentage = bellow.pc,
 	                     above.percentage = above.pc)
-	write.xlsx(toxlsx, gsub(".bed", ".shuffle_delta_density.xlsx", inputFile), overwrite = TRUE)
+	write.xlsx(toxlsx, gsub(".bed", ".shuffle_delta_density.xlsx", inputFile))
 	
 	
 	# Percentage of pre-defined delta

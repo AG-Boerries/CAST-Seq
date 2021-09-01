@@ -1,11 +1,23 @@
 
-library(GenomicRanges)
-library(openxlsx)
-library(rtracklayer)
-library(ChIPpeakAnno)
-library(UpSetR)
+#library(GenomicRanges)
+#library(openxlsx)
+#library(rtracklayer)
+#library(ChIPpeakAnno)
+#library(UpSetR)
 
 #source("~/Scripts/work/tools/venn_script.r")
+
+Intersect <- function (x) {  
+  # Multiple set version of intersect
+  # x is a list
+  if (length(x) == 1) {
+    unlist(x)
+  } else if (length(x) == 2) {
+    intersect(x[[1]], x[[2]])
+  } else if (length(x) > 2){
+    intersect(x[[1]], Intersect(x[-1]))
+  }
+}
 
 hg19to38 <- function(m)
 {
@@ -51,7 +63,7 @@ getReads <- function(dfA, dfB, width)
 }
 
 
-getHits <- function(dfA, dfB, width)
+getOvlHits <- function(dfA, dfB, width)
 {
   hits <- rep(0, nrow(dfA))
   
@@ -195,6 +207,11 @@ dfComparisonList <- function(fList, nList, width = 2000, nb.signif = 1, NBS = TR
   #	start.field = "start", end.field = "end",
   #	keep.extra.columns = TRUE, ignore.strand = TRUE))
   
+  # USE COMMON COLUMN ONLY
+  dfList.column <- lapply(dfList, colnames)
+  column.common <- Intersect(dfList.column)
+  dfList <- lapply(dfList, function(i) i[, colnames(i) %in% column.common])
+  
   # Remove NBS
   if(!NBS) dfList <- lapply(dfList, function(i) i[i$group != "NBS", ])
   
@@ -247,7 +264,7 @@ dfComparisonList <- function(fList, nList, width = 2000, nb.signif = 1, NBS = TR
   readM <- do.call(cbind, readList)
   colnames(readM) <- paste0(nList, "_read")
   
-  hitList <- lapply(dfList, getHits, dfA = df.final, width = 0)
+  hitList <- lapply(dfList, getOvlHits, dfA = df.final, width = 0)
   hitM <- do.call(cbind, hitList)
   colnames(hitM) <- paste0(nList, "_hits")
   

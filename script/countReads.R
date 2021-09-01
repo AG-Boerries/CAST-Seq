@@ -73,7 +73,7 @@ countReads <- function(fastqFolder, sampleFolder, testSample, utSample){
   if(merged == 0){pos.pc <- 0}else pos.pc <- round(pos / merged * 100, digits = 2)
   if(merged.UT == 0){pos.UT.pc <- 0}else pos.UT.pc <- round(pos.UT / merged.UT * 100, digits = 2)
   
-  # NEG
+  # NEG (mispriming)
   neg <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_Filt2.fastq.gz"))))
   neg.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_Filt2.fastq.gz"))))
   
@@ -118,7 +118,7 @@ countReads <- function(fastqFolder, sampleFolder, testSample, utSample){
   if(bam.UT == 0){bed.UT.pc <- 0}else bed.UT.pc <- round(bed.UT / bam.UT * 100, digits = 2)
   
   # SAVE
-  toxlsx <- data.frame(File = c("R1", "R2", "assembled", "merged", "pos", "neg", "trim1", "trim2", "trim3", "bam", "bed"),
+  toxlsx <- data.frame(File = c("R1", "R2", "assembled", "merged", "pos", "mispriming", "trim1", "trim2", "trim3", "bam", "bed"),
                        Treated.count = c(r1, r2, assembled, merged, pos, neg, trim1, trim2, trim3, bam, bed),
                        Treated.percentage = c(r1.pc, r2.pc, assembled.pc, merged.pc, pos.pc, neg.pc, trim1.pc, trim2.pc, trim3.pc, bam.pc, bed.pc),
                        UN.Treated.count = c(r1.UT, r2.UT, assembled.UT, merged.UT, pos.UT, neg.UT, trim1.UT, trim2.UT, trim3.UT, bam.UT, bed.UT),

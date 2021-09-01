@@ -1,5 +1,3 @@
-library(ggplot2)
-library(parallel)
 
 ############################################
 ###                                      ###
@@ -27,30 +25,37 @@ readLength <- function(fastq, out = NULL)
 ###                                      ###
 ############################################
 
-
-# Get all fastq.gz
-#setwd("~/cluster/master/offTargets/Giando/pipelineGit/samples/G3_WT_D1/results/fastq_aln")
-#setwd("/home/gandri/offTargets/Giando/pipelineGit/samples/G3_WT_D1/results/fastq_aln")
-setwd("/home/gandri/offTargets/Giando/pipelineGit/samples/")
-#fastqFiles <- list.files(pattern = ".fastq.gz$", recursive = TRUE)
-#fastqFiles <- fastqFiles[!grepl("Headtoheadtrimmed", fastqFiles)]
-#mclapply(fastqFiles, readLength, mc.cores = 12)
-
-# Get read distribution
-lengthFiles <- list.files(pattern = ".readLength.txt$", recursive = TRUE)
-names(lengthFiles) <- gsub(".txt", "", basename(lengthFiles))
-lengthList <- lapply(lengthFiles, read.delim, header = FALSE, colClasses = c("integer", "integer"), sep = " ")
-
-# Plot read length density distribution
-#setwd("~/cluster/master/offTargets/Giando/readLength")
-setwd("/home/gandri/offTargets/Giando/readLength")
-lapply(1:length(lengthList), function(i){
-	p <- ggplot(data=lengthList[[i]], aes(x=V1, y=V2))
-	p <- p + geom_bar(stat="identity")
-	p <- p + theme_bw()
-	p <- p + xlab("read length (bp)") + ylab("number of reads")
-	ggsave(plot = p, filename = paste0(names(lengthList)[i], ".pdf"), width = 7, height = 7)
-})
+if(FALSE){
+  library(ggplot2)
+  library(parallel)
+  
+  # Get all fastq.gz
+  #setwd("~/cluster/master/offTargets/Giando/pipelineGit/samples/G3_WT_D1/results/fastq_aln")
+  #setwd("/home/gandri/offTargets/Giando/pipelineGit/samples/G3_WT_D1/results/fastq_aln")
+  setwd("/home/gandri/offTargets/Giando/pipelineGit/samples/")
+  #fastqFiles <- list.files(pattern = ".fastq.gz$", recursive = TRUE)
+  #fastqFiles <- fastqFiles[!grepl("Headtoheadtrimmed", fastqFiles)]
+  #mclapply(fastqFiles, readLength, mc.cores = 12)
+  
+  # Get read distribution
+  lengthFiles <- list.files(pattern = ".readLength.txt$", recursive = TRUE)
+  names(lengthFiles) <- gsub(".txt", "", basename(lengthFiles))
+  lengthList <- lapply(lengthFiles, read.delim, header = FALSE, colClasses = c("integer", "integer"), sep = " ")
+  
+  # Plot read length density distribution
+  #setwd("~/cluster/master/offTargets/Giando/readLength")
+  setwd("/home/gandri/offTargets/Giando/readLength")
+  lapply(1:length(lengthList), function(i){
+    p <- ggplot(data=lengthList[[i]], aes(x=V1, y=V2))
+    p <- p + geom_bar(stat="identity")
+    p <- p + theme_bw()
+    p <- p + xlab("read length (bp)") + ylab("number of reads")
+    ggsave(plot = p, filename = paste0(names(lengthList)[i], ".pdf"), width = 7, height = 7)
+  })
+  
+  
+  
+}
 
 
 

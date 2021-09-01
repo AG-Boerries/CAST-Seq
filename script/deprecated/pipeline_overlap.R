@@ -13,30 +13,6 @@ print("################     CHECK INPUT    ################")
 print(ovlD)
 print(ovlName)
 
-  ##########################################################################################
-  ############                         OVERLAP ANALYSIS                         ############
-  ##########################################################################################
-  
-  print("################    OVERLAP ANALYSIS    ################")
-  
-  print(replicates)
-  print(repNames)
-  print(repD)
-  
-  replicates.split <- strsplit(replicates, split = ",")[[1]]
-  repNames.split <- strsplit(repNames, split = ",")[[1]]
-  
-  siteFiles <- paste0(replicates.split, "_w", w, "_FINAL.xlsx")
-  siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
-  names(siteFiles) <- repNames.split
-  
-  print(siteFiles)
-  if(length(siteFiles)<2) stop("at least two files are needed to perform overlap analysis")
-
-  compList <- dfComparisonList(siteFiles, names(siteFiles), width = distance.cutoff, nb.signif = nb.ovl, NBS = TRUE)
-  write.xlsx(compList, file.path(ovlD, paste0(ovlName, ".xlsx")), overwrite = TRUE)
-  makeUpset(file.path(ovlD, paste0(ovlName, ".xlsx")))
-
 
 ##########################################################################################
 ############                DESIGNER NUCLEASE TREATED SAMPLE                  ############
@@ -165,11 +141,7 @@ chrPlotAside(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")
 ##########################################################################################
 print("############    CHR PLOT (CIRCLIZE)    ############")
 ################     CHR PLOT (CIRCLIZE)    ################ 
-
-tryCatch(
-    {
-    print(otsBed)
-	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
                    zoom.size = 25000, label = FALSE, 
                    PV.cutoff = NULL,
                    bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -178,25 +150,9 @@ tryCatch(
                    realigned = TRUE,
                    outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
                    species = circos.sp)
-                   
-    },
-    error = function(e){
-		print("no sites on defined otsBed, use max gRNA score")
-	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                   zoom.size = 25000, label = FALSE, 
-                   PV.cutoff = NULL,
-                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                   showNBS = TRUE,
-                   gene.bed = NULL, ots.bed = NULL, 
-                   outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
-                   species = circos.sp)
-    }
-	)
   
-  
-  tryCatch(
-    {
-	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+
+circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
                  zoom.size = 25000, label = FALSE, 
                  PV.cutoff = NULL,
                  bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -205,21 +161,6 @@ tryCatch(
                  realigned = TRUE,
                  outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
                  species = circos.sp)
-                   
-    },
-    error = function(e){
-		print("no sites on defined otsBed, use max gRNA score")
-	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                 zoom.size = 25000, label = FALSE, 
-                 PV.cutoff = NULL,
-                 bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                 showNBS = FALSE,
-                 gene.bed = NULL, ots.bed = NULL, 
-                 outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
-                 species = circos.sp)
-    }
-	)
-                                 
 
 ##########################################################################################
 ############                           HITS BARPLOT                           ############

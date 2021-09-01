@@ -37,6 +37,25 @@ extend_cytoband = function(bed, chromosome, start, end, prefix = "zoom_") {
 }
 
 extend_bed = function(bed, chromosome, start, end, prefix = "zoom_") {
+  zoom.gr <- makeGRangesFromDataFrame(data.frame(chromosome = chromosome, start = start, end = end),
+                                      seqnames.field = "chromosome", start.field = "start", end.field = "end",
+                                      keep.extra.columns = FALSE, ignore.strand = TRUE)
+  bed.gr <- makeGRangesFromDataFrame(bed,
+                                       seqnames.field = "chromosome", start.field = "start", end.field = "end",
+                                       keep.extra.columns = FALSE, ignore.strand = TRUE)
+  
+  gr.ovl <- findOverlaps(query = zoom.gr, subject = bed.gr, type = "any", maxgap = 0)
+  
+  zoom_bed = bed
+  zoom_bed[[1]] = paste0(prefix, zoom_bed[[1]])
+
+  idx <- subjectHits(gr.ovl)
+  zoom_bed = zoom_bed[idx, ]
+  
+  rbind(bed, zoom_bed)
+}
+
+extend_bedOLD = function(bed, chromosome, start, end, prefix = "zoom_") {
   zoom_bed = bed[bed[[1]] %in% chromosome, , drop = FALSE]
   zoom_bed[[1]] = paste0(prefix, zoom_bed[[1]])
   
@@ -72,7 +91,6 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   siteM.chr <- factor(gsub("chr", "", siteM$chromosome), levels = c(1:22, "X", "Y"))
   
-
   siteM <- siteM[order(siteM.chr, siteM$start), ]
   
   # SHOW NBS (TRUE / FALSE)
@@ -128,8 +146,10 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   cytoband_df = cytoband$df
   chromosome = cytoband$chromosome
   
-  
   new_cytoband_df <- extend_cytoband(cytoband_df, zoom.chr, start = zoom.start, end = zoom.end)
+  
+  zoom_lower_limit <- min(new_cytoband_df$V2[grepl("zoom_", new_cytoband_df$V1)])
+  zoom_upper_limit <- max(new_cytoband_df$V3[grepl("zoom_", new_cytoband_df$V1)])
   
   xrange = c(cytoband$chr.len, cytoband$chr.len[zoom.chr])
   if(species == "hg38"){
@@ -167,12 +187,23 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   all.coord <- sapply(1:nrow(siteM), function(i) paste(siteM[i, c("start", "end")], collapse = "-"))
   toRemove <- setdiff(which(all.coord %in% zoom.coord), zoom.idx)
   
+  # ADJUST ZOOM LIMITS
+  siteM$start[grepl("zoom_", siteM$chromosome) & siteM$start < zoom_lower_limit] <- zoom_lower_limit
+  siteM$end[grepl("zoom_", siteM$chromosome) & siteM$end > zoom_upper_limit] <- zoom_upper_limit
+  siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord < zoom_lower_limit] <- zoom_lower_limit
+  siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord > zoom_upper_limit] <- zoom_upper_limit
+  
+  # REMOVE DUPLICATES SITES
   siteM.sub <- siteM[-toRemove, ]# remove duplicated sites, keep only the ones in zoom area
   group <- siteM.sub[, "group"]
   #group[group == "off.target"] <- "OMT"
   #group[group == "HR"] <- "HMT"
   group[group == "OMT" & siteM.sub$is.HMT == "yes"] <- "OMT/HMT"
   #group[group == "CBS"] <- "NBS"
+  
+
+  #siteM.sub$start[grepl("zoom_", siteM.sub$chromosome) & siteM.sub$start < zoom_lower_limit] <- zoom_lower_limit
+  #siteM.sub$end[grepl("zoom_", siteM.sub$chromosome) & siteM.sub$end > zoom_upper_limit] <- zoom_upper_limit
   
   # ON target
   if(!is.null(ots.bed)){
@@ -344,7 +375,7 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
     geneM <- read.delim(gene.bed, header = FALSE)# must be 4 columns: chr, start, end, symbol
     geneM[,1] <- paste0("zoom_", geneM[,1])
   }else{# define gene based on ON-target coordinates
-    geneM <- siteM.sub[which.max(siteM.sub$read), c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
+    geneM <- siteM.sub[which(group == "ON"), c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
   }
 
   if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
@@ -352,10 +383,10 @@ circlizePipeline <- function(siteFile, zoom.size = 50000, label = FALSE,
   if(class(geneM[,4]) == "factor") geneM[,4] <- as.character(geneM[,4])
   
   #adjust gene coordinates
-  zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
-  zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
-  if(geneM$geneStart < zoom.min) geneM$geneStart <- zoom.min
-  if(geneM$geneEnd > zoom.max) geneM$geneEnd <- zoom.max
+  #zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
+  #zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
+  if(geneM$geneStart < zoom_lower_limit) geneM$geneStart <- zoom_lower_limit
+  if(geneM$geneEnd > zoom_upper_limit) geneM$geneEnd <- zoom_upper_limit
   
   if(geneM$geneEnd < geneM$geneStart) geneM$geneEnd <- geneM$geneStart
   
@@ -549,6 +580,10 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   
   new_cytoband_df <- extend_cytoband(cytoband_df, zoom.chr, start = zoom.start, end = zoom.end)
   
+  # DEFINE ZOOM LIMITS
+  zoom_lower_limit <- min(new_cytoband_df$V2[grepl("zoom_", new_cytoband_df$V1)])
+  zoom_upper_limit <- max(new_cytoband_df$V3[grepl("zoom_", new_cytoband_df$V1)])
+  
   xrange = c(cytoband$chr.len, cytoband$chr.len[zoom.chr])
   
   if(species == "hg38"){
@@ -587,6 +622,13 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   all.coord <- sapply(1:nrow(siteM), function(i) paste(siteM[i, c("start", "end")], collapse = "-"))
   toRemove <- setdiff(which(all.coord %in% zoom.coord), zoom.idx)
   
+  # ADJUST ZOOM LIMITS
+  siteM$start[grepl("zoom_", siteM$chromosome) & siteM$start < zoom_lower_limit] <- zoom_lower_limit
+  siteM$end[grepl("zoom_", siteM$chromosome) & siteM$end > zoom_upper_limit] <- zoom_upper_limit
+  siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord < zoom_lower_limit] <- zoom_lower_limit
+  siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord > zoom_upper_limit] <- zoom_upper_limit
+  
+  # REMOVE DUPLICATED SITES
   siteM.sub <- siteM[-toRemove, ]# remove duplicated sites, keep only the ones in zoom area
   group <- siteM.sub[, "group"]
   #group[group == "off.target"] <- "OMT"
@@ -782,7 +824,6 @@ circlizePipelineTALEN <- function(siteFile, zoom.size = 50000, label = FALSE,
   }else{# define gene based on ON-target coordinates
     #geneM <- siteM.sub[which.max(siteM.sub$read), c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
     geneM <- siteM.sub[group == "ON", c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
-    
   }
   
   if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
@@ -922,6 +963,24 @@ library(circlize)
 library(openxlsx)
 library(GenomicRanges)
 
+  
+  # test EMD
+  siteFile <- "~/cluster/cluster/CASTSeq/pipelineGit/samples_overlap/GENEWIZ_90-556214738/EMD/EMD1-sample2_OVL2/EMD1-sample2_OVL2_FINAL.xlsx"
+  otsBed <- "~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/EMD1/EMD-sample2-1/data/ots.bed"
+  
+  siteFile <- "~/cluster/cluster/CASTSeq/pipelineGit/samples_overlap/GENEWIZ_90-556214738/EMD/EMD4-sample16_OVL2/EMD4-sample16_OVL2_FINAL.xlsx"
+  otsBed <- "~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/EMD4/EMD-sample16-1/data/ots.bed"
+  
+  circlizePipeline(siteFile = siteFile,
+                   zoom.size = 25000, label = FALSE, 
+                   PV.cutoff = NULL,
+                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                   showNBS = TRUE,
+                   gene.bed = NULL, ots.bed = otsBed, 
+                   realigned = TRUE,
+                   outFile = "~/tmp/EMD_circlize.pdf",
+                   species = "hg38")
+  
   
   # TEST CRISPR
   #siteFile <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/MK_Kapa_Rep2_OVL/MK_Kapa_Rep2_FINAL.xlsx")
@@ -1105,6 +1164,8 @@ library(GenomicRanges)
                      species = "hg38")
     
   })
+  
+  
   
 ##################################################
 # OLD

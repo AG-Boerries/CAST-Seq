@@ -376,65 +376,24 @@ if(saveReads){
 if(filtName != ""){
   print("############    CHR PLOT (CIRCLIZE)    ############")
   ################     CHR PLOT (CIRCLIZE)    ################ 
-  
-	tryCatch(
-    	{
- 	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
                    zoom.size = 25000, label = FALSE, 
                    PV.cutoff = pv.cutoff,
                    bestScore.cutoff = NULL, bestFlank.cutoff = 25,
                    showNBS = TRUE,
                    gene.bed = NULL, ots.bed = otsBed, 
-                   realigned = TRUE,
                    outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k.pdf")),
                    species = circos.sp)
-    },
-    error = function(e){
-	print("no sites on defined otsBed, use max gRNA score")
-		
-	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                   zoom.size = 25000, label = FALSE, 
-                   PV.cutoff = pv.cutoff,
-                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                   showNBS = TRUE,
-                   gene.bed = NULL, ots.bed = NULL, 
-                   realigned = FALSE,
-                   outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k.pdf")),
-                   species = circos.sp)
-		    }
-	)
-	
-	
-	tryCatch(
-    	{
-  	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  
+  circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
                         zoom.size = 25000, label = FALSE, 
                         PV.cutoff = pv.cutoff,
                         bestScore.cutoff = NULL, bestFlank.cutoff = 25,
                         showNBS = FALSE,
                         gene.bed = NULL, ots.bed = otsBed, 
-                        realigned = TRUE,
                         outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k_woNBS.pdf")),
                         species = circos.sp)
-                        
-    },
-    error = function(e){
-	print("no sites on defined otsBed, use max gRNA score")
-		
-  	circlizePipelineTALEN(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                        zoom.size = 25000, label = FALSE, 
-                        PV.cutoff = pv.cutoff,
-                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                        showNBS = FALSE,
-                        gene.bed = NULL, ots.bed = NULL, 
-                        realigned = FALSE,
-                        outFile = file.path(guideD, paste0(sampleName, "_w", w, "_circlize_25k_woNBS.pdf")),
-                        species = circos.sp)            
-		    }
-	)
-	
-	
-
+  
 }
 
 ##########################################################################################
@@ -448,27 +407,6 @@ hitsBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
 hitsBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
             pv = pv.cutoff, top = 50, showNBS = FALSE, log = TRUE,
             outName = file.path(guideD, paste0(sampleName, "_w", w, "_hits_barplot_woNBS.pdf")))
-
-
-##########################################################################################
-############                         ON-TARGET READOUT                        ############
-##########################################################################################
-print("############    ON-TARGET READOUT    ############")
-
-ONreadout(bamFile = file.path(sampleD, "results", "fastq_aln", paste0(sampleName, "_AlignmentSort.bam")),
-          otsFile = otsBed,
-          gRNA.orientation = "forward",
-          window.size = 10000,
-          sampleName = sampleName,
-          outDir = guideD)
-
-ONreadout(bamFile = file.path(sampleD, "results", "fastq_aln", paste0(sampleName, "_AlignmentSort.bam")),
-          otsFile = otsBed,
-          gRNA.orientation = "forward",
-          window.size = 5000,
-          sampleName = sampleName,
-          outDir = guideD)
-
 
 ##########################################################################################
 ############                        REMOVE TMP FILES                          ############

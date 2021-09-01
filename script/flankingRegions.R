@@ -30,6 +30,7 @@ addFlanking <- function(inputFile, otBed, size)
 
 	flankMat <- read.delim(otBed, header = FALSE)
 	flankMat[,2] <- flankMat[,2] - size
+	if(flankMat[,2] < 0) flankMat[,2] <- 0
 	flankMat[,3] <- flankMat[,3] + size
 	flankSeq <- bed2sequence(flankMat, g = GNM)
 	flankSeq <- flankSeq[[1]]

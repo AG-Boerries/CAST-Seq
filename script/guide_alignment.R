@@ -15,7 +15,7 @@
 ###                                      ###
 ############################################
 
-toNum <- function(x) as.numeric(levels(x))[x]
+#toNum <- function(x) as.numeric(levels(x))[x]
 
 getRevComp <- function(x) as.character(reverseComplement(DNAString(x)))
 

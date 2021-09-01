@@ -13,6 +13,7 @@ getThreshold <- function(deltaFile, cutoff = 0.05)
 
 getHits <- function(testFile, threshold)# get hits
 {
+	print("getHits")
 	CUTOFF <- threshold
 	#CUTOFF  <- 1500
 

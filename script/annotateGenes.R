@@ -17,7 +17,11 @@
 ###                                      ###
 ############################################
 
-toNum <- function(x) as.numeric(levels(x))[x]
+toNum <- function(x){
+  if(class(x) == "factor")return(as.numeric(levels(x))[x])
+  return(as.numeric(x))
+}
+
 
 annotateExonIntron <- function(m)
 {
@@ -91,10 +95,10 @@ getOddMatrix <- function(test, ref)
 	colnames(OddMatrix) <- c("Region", "P.value", "Odd", "Conf.int.low", "Conf.int.high")
 	
 	OddMatrix <- as.data.frame(OddMatrix)
-	OddMatrix[,"P.value"] <- as.numeric(OddMatrix[,"P.value"])
-	OddMatrix[,"Odd"] <- as.numeric(OddMatrix[,"Odd"])
-	OddMatrix[,"Conf.int.low"] <- as.numeric(OddMatrix[,"Conf.int.low"])
-	OddMatrix[,"Conf.int.high"] <- as.numeric(OddMatrix[,"Conf.int.high"])
+	OddMatrix[,"P.value"] <- toNum(OddMatrix[,"P.value"])
+	OddMatrix[,"Odd"] <- toNum(OddMatrix[,"Odd"])
+	OddMatrix[,"Conf.int.low"] <- toNum(OddMatrix[,"Conf.int.low"])
+	OddMatrix[,"Conf.int.high"] <- toNum(OddMatrix[,"Conf.int.high"])
 	
 	return(OddMatrix)
 }

@@ -3,7 +3,7 @@
 
 
 
-bamCoverage <- function(functionstring="~/Programs/bedtools2/bin/bedtools coverage", bam, bed, outFile, opt.string="")
+bamCoverage <- function(functionstring="bedtools coverage", bam, bed, outFile, opt.string="")
 {
   options(scipen =99)
   
@@ -13,6 +13,14 @@ bamCoverage <- function(functionstring="~/Programs/bedtools2/bin/bedtools covera
 }
 
 
+
+chunkBed <- function(min, max, size){
+  limits <- ceiling(seq(min, max, length.out = size+1))
+  bins <- lapply(2:length(limits), function(k){
+    return(c(limits[k-1], limits[k]))
+  })
+  return(do.call(rbind, bins))
+}
 
 ONreadout <- function(bamFile, otsFile, gRNA.orientation, window.size = 5000, sampleName, outDir){
   
@@ -77,7 +85,31 @@ ONreadout <- function(bamFile, otsFile, gRNA.orientation, window.size = 5000, sa
   write.xlsx(cov.df, file = file.path(outDir, paste0(sampleName, "_", gsub("000$", "kb", window.size), ".xlsx")),
              row.names = TRUE, overwrite = TRUE)
   
+  # calculate coverage per bins
+  bins <- chunkBed(ots$V2, ots$V3, 100)
+  bins <- data.frame(ots$V1,
+                     bins,
+                     paste0("bin_", seq(1:nrow(bins))),
+                     1000,
+                     "+")
+  colnames(bins) <- colnames(ots)
+  bins.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+  write.table(bins, bins.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
   
+  cov.bin.pos.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+  bamCoverage(bam = bamFile, bed = bins.tmp, outFile = cov.bin.pos.tmp, opt.string="-bed -s")
+  cov.bin.pos <- read.delim(cov.bin.pos.tmp, header = FALSE)
+  
+  cov.bin.neg.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+  bamCoverage(bam = bamFile, bed = bins.tmp, outFile = cov.bin.neg.tmp, opt.string="-bed -S")
+  cov.bin.neg <- read.delim(cov.bin.neg.tmp, header = FALSE)
+  
+  cov.bin.df <- cbind(cov.bin.pos[, c(1:4, 7)], cov.bin.neg$V7, cov.bin.pos$V7 + cov.bin.neg$V7)
+  colnames(cov.bin.df) <- c("chr", "start", "end", "bin", "POS", "NEG", "TOT")
+  write.xlsx(cov.bin.df, file = file.path(outDir, paste0(sampleName, "_", gsub("000$", "kb", window.size), "_bins.xlsx")),
+             row.names = FALSE, overwrite = TRUE)
+  
+  ###############
   # plot coverage
   ggmat <- data.frame(CHR = c(cov.pos$V1, cov.neg$V1),
                       POSITION = c(cov.pos$V2 + cov.pos$V7, cov.neg$V2 + cov.neg$V7),

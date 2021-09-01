@@ -20,7 +20,7 @@ finalize <- function(inputFile){
 	
 	# RE-ORDER
 	readMat$group <- factor(readMat$group, levels = c("OMT", "HMT", "NBS"))
-	readMat <- readMat[order(readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
+	readMat <- readMat[order(readMat$is.ON, readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
 	
 	# SITE SUBSETS
 	readMat.OMT <- readMat[readMat$group == "OMT",]
@@ -31,9 +31,7 @@ finalize <- function(inputFile){
 	readMat.OMT.signif <- readMat[readMat$group == "OMT" & readMat$adj.pvalue < 0.05,]
 	readMat.HMT.signif <- readMat[readMat$group == "HMT" & readMat$adj.pvalue < 0.05,]
 	readMat.NBS.signif <- readMat[readMat$group == "NBS" & readMat$adj.pvalue < 0.05,]
-	
 
-	
 	# SAVE
 	toxlsx <- list(ALL = readMat,
 				   OMT = readMat.OMT,
@@ -56,7 +54,7 @@ finalizeOverlap <- function(inputFile){
   
   # RE-ORDER
   readMat$group <- factor(readMat$group, levels = c("OMT", "HMT", "NBS"))
-  readMat <- readMat[order(readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
+  readMat <- readMat[order(readMat$is.ON, readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
   
   # SITE SUBSETS
   readMat.OMT <- readMat[readMat$group == "OMT",]

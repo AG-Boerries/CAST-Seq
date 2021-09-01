@@ -66,11 +66,19 @@ option_list = list(
     make_option(c("--species"), type="character", default="hg", 
               help="name of sample species [default= %default]", metavar="character"),   
     make_option(c("--ovlDname"), type="character", default=NULL, 
-              help="name of overlap directory within sample directory (only for overlap or talen_overlap pipelines)", metavar="character"),       
+              help="name of overlap directory within sample directory (only for crispr_overlap or talen_overlap pipelines)", metavar="character"),       
     make_option(c("--ovlName"), type="character", default=NULL, 
-              help="name of overlap sample within overlap directory (only for overlap or talen_overlap pipelines) Must be XXX if the files is called XXX.xlsx", metavar="character"),          
+              help="name of overlap sample within overlap directory (only for crispr_overlap or talen_overlap pipelines) Must be XXX if the files is called XXX.xlsx", metavar="character"),   
+    make_option(c("--replicates"), type="character", default=NULL, 
+              help="name of sample to be used in the overlap analysis. [default= %default]", metavar="character"),            
+    make_option(c("--repNames"), type="character", default=NULL, 
+              help="labels of the replicates to be used in the overlap analysis. [default= %default]", metavar="character"),          
+    make_option(c("--repDname"), type="character", default=NULL, 
+              help="name of a representative replicate (used to find the appropriate replicate files). [default= %default]", metavar="character"),       
+    make_option(c("--ovl"), type="integer", default=1, 
+              help="number of significant samples to be considered in the overlap analysis. [default= %default]", metavar="character"),          
 	make_option(c("--cpu"), type="integer", default=2, 
-              help="Number of CPUs [default= %default]", metavar="integer"),            
+              help="number of CPUs [default= %default]", metavar="integer"),            
     make_option(c("--pythonPath"), type="character", default="/Users/geoffroyandrieux/miniconda3/bin/python", 
               help="python path [default= %default]", metavar="character")             
 ); 
@@ -88,12 +96,12 @@ if(is.null(opt$sampleDname)){
   stop("At least one argument must be supplied (sampleDname).n", call.=FALSE)
 }
 
-if(is.null(opt$sampleName) & !(opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap"))){
+if(is.null(opt$sampleName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (sampleName).n", call.=FALSE)
 }
 
-if(is.null(opt$controlName) & !(opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap"))){
+if(is.null(opt$controlName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (controlName).n", call.=FALSE)
 }
@@ -104,12 +112,12 @@ if(is.null(opt$homeD)){
 }
 
 # Overlap pipeline parameters
-if(is.null(opt$ovlDname) & opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap")){
+if(is.null(opt$ovlDname) & opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap")){
   print_help(opt_parser)
   stop("At least one argument must be supplied when using overlap or talen overlap pipelines (ovlDname).n", call.=FALSE)
 }
 
-if(is.null(opt$ovlName) & opt$pipeline %in% c("overlap", "talen_overlap", "double_nickase_overlap")){
+if(is.null(opt$ovlName) & opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap")){
   print_help(opt_parser)
   stop("At least one argument must be supplied when using overlap or talen overlap pipelines (ovlName).n", call.=FALSE)
 }
@@ -135,7 +143,7 @@ require(rtracklayer)
 require(biomaRt)
 require(tools)
 require(karyoploteR)
-#require(UpSetR)
+require(UpSetR)
 require(circlize)
 library(tidyr)
 
@@ -234,6 +242,10 @@ if(opt$saveReads == "yes"){
 # OVERLAP PIPELINE PARAMETERS
 ovlD <- file.path(homeD, "samples_overlap", opt$ovlDname)
 ovlName <- opt$ovlName
+replicates <- opt$replicates
+repNames <- opt$repNames
+repD <- file.path(homeD, "samples", opt$repDname)
+nb.ovl <- opt$ovl
 
 # REMOVE TMP FILES
 rmTMP <- TRUE
@@ -368,7 +380,7 @@ source(file.path(scriptD, "pieChart.R"))
 source(file.path(scriptD, "annotateGenes.R"))
 source(file.path(scriptD, "vs_allGenes.R"))
 #source(file.path(scriptD, "vs_onco.R"))
-source(file.path(scriptD, "histone_forestPlot.R"))
+#source(file.path(scriptD, "histone_forestPlot.R"))
 source(file.path(scriptD, "scoring_system.R"))
 source(file.path(scriptD, "chrPlot.R"))
 source(file.path(scriptD, "ogi.R"))
@@ -377,6 +389,8 @@ source(file.path(scriptD, "pipeline.R"))
 #source(file.path(scriptD, "pipeline_2OT.R"))
 source(file.path(scriptD, "pipeline_overlap.R"))
 source(file.path(scriptD, "circlize.R"))
+source(file.path(scriptD, "site_overlap.R"))
+source(file.path(scriptD, "ONreadout.R"))
 
 if(opt$pipeline == "talen"){
 	source(file.path(scriptD, "pipeline_TALEN.R"))
@@ -416,8 +430,8 @@ if(opt$pipeline == "crispr"){
 }else if(opt$pipeline == "crispr_2ot"){
 	print("START CRISPR 2 ON-TARGETS PIPELINE")
 	runPipeline_2OT()
-}else if(opt$pipeline == "overlap"){
-	print("START OVERLAP PIPELINE")
+}else if(opt$pipeline == "crispr_overlap"){
+	print("START CRISPR OVERLAP PIPELINE")
 	runPipelineOverlap()
 }else if(opt$pipeline == "talen"){
 	print("START TALEN PIPELINE")
@@ -433,7 +447,7 @@ if(opt$pipeline == "crispr"){
   runPipelineDoubleNickaseOverlap()
 }else{
   print_help(opt_parser)
-  stop("wrong pipeline name. Must be crispr, crispr_2ot, overlap, talen or talen_overlap", call.=FALSE)
+  stop("wrong pipeline name. Must be crispr, crispr_2ot, crispr_overlap, talen or talen_overlap, double_nickase or double_nickase_overlap", call.=FALSE)
 }
 
 

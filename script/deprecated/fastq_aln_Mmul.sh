@@ -3,29 +3,19 @@
 # sh FANCF_decoy_rep1_fastq_aln.sh /home/gandri/offTargets/Giando/pipelineGit/ FANCF_decoy_rep1 FANCF-withDecoyGel_S1_L001 UT-FANCF-withDecoyGel_S2_L001
 
 ############# DEFINE INPUTS ##################
-CPU=$7
-echo "Number of CPU"
-echo ${CPU}
+CPU=$6
 
 # $1
 #homeDir=/Volumes/Home/Geoffroy/offTargets/Giando/pipeline/
 homeDir=$1
 
 # $2
-annDir=$2/
-
-# $3
 #mainDir=${homeDir}FANCF_decoy/
-mainDir=${homeDir}/samples/$3/
+mainDir=${homeDir}/samples/$2/
 
-# $4
-fastqDir=$4/
-
-echo $fastqDir
-
-# $5 $6
+# $3 $4
 #Samples="FANCF-decoy_L001 FANCF-UT-decoy_L001"
-Samples="$5 $6"
+Samples="$3 $4"
 
 # Set up the directories and annotation files
 #annotDir=${homeDir}annotations/
@@ -50,7 +40,7 @@ adapters=${annotDir}TruSeq4-PE.fa
 #crispSeq=TGCTCTTCAGCCTTTTGCAGTTTATCAGGATGAGGATGACCAGCATGTTGCCCACAAAACCAAAGATGAACACCAGTGAGTAGAGCGGAGGCAGGAGGCGGGCTGCGATTTGCTTCACATTGATTTTTTGGCAGGGCTCCGATGTATAATAATTGATGTCATAGATTGGACTTGACACTTGATAATCCATCTTGTTCCACCctgtgcataaataaaaagtga
 
 # Repeat masker parameters
-chrSize=${annotDir}chrom.sizes
+chrSize=${annotDir}hg38.chrom.sizes
 genomeFasta=${annotDir}bowtie2Index/genome.fa
 
 ############# ALIGNMENT ##################
@@ -59,72 +49,29 @@ do
 
 	logFile=${outDir}${fname}_pipeline.log
 
-	#pair1=${dataDir}fastq/${fname}_R1_001.fastq.gz
-	#pair2=${dataDir}fastq/${fname}_R2_001.fastq.gz
-
-	pair1=${fastqDir}/${fname}_R1_001.fastq.gz
-	pair2=${fastqDir}/${fname}_R2_001.fastq.gz
+	pair1=${dataDir}fastq/${fname}_R1_001.fastq.gz
+	pair2=${dataDir}fastq/${fname}_R2_001.fastq.gz
 
 	############## Quality control fastq files #####################
-	#fastqc -o ${outDir} --noextract ${pair1}
-	#fastqc -o ${outDir} --noextract ${pair2}
+	fastqc -o ${outDir} --noextract ${pair1}
+	fastqc -o ${outDir} --noextract ${pair2}
 
-	#cp ${pair2} ${outDir}${fname}_merged.fastq.gz
-
-	################# PEAR PAIRING ###################
-	#echo "START PEAR PAIRING" > ${logFile}
+	################# FLASH PAIRING ###################
+	echo "START PEAR PAIRING" > ${logFile}
 
 	# PEAR
-	#pear -j ${CPU} -o ${fname} -f ${pair2} -r ${pair1} -o ${outDir}${fname} > ${logFile}
+	pear -j 12 -o ${fname} -f ${pair2} -r ${pair1} -o ${outDir}${fname} > ${logFile}
 	
 	# MERGE PAIRED AND UNPAIRED R2
 	# we used notCombined_1.fastq because we used R2 as R1 with flash
 	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	#cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	
-	#gzip ${outDir}${fname}.assembled.fastq
-	#gzip ${outDir}${fname}.unassembled.forward.fastq
-	#gzip ${outDir}${fname}.unassembled.reverse.fastq
-	
-	#echo "_merged.fastq.gz: " >> ${logFile}
-	#echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
-	
-	
-	################# BBMERGE PAIRING ###################
-	echo "START BBMERGE PAIRING" > ${logFile}
-	bbmerge.sh -Xmx4g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
-	bbmerge.sh -Xmx4g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
-	
-	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}.assembled.fastq.gz outu=${outDir}${fname}.unassembled.R2.fastq outu2=${outDir}${fname}.unassembled.R1.fastq adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa ecct extend2=20 iterations=5
-	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}_merged.fastq.gz outu=${outDir}${fname}_UNmerged_R2.fastq.gz outu2=${outDir}${fname}_UNmerged_R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
-	bbmerge.sh -Xmx20g in=${pair2} in2=${pair1} out=${outDir}${fname}_assembled.fastq.gz outu=${outDir}${fname}_unassembled.R2.fastq.gz outu2=${outDir}${fname}_unassembled.R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
-	
-	cat ${outDir}${fname}_assembled.fastq.gz ${outDir}${fname}_unassembled.R2.fastq.gz > ${outDir}${fname}_merged.fastq.gz
-	
-	################# FLASH PAIRING ###################
-	#echo "START FLASH PAIRING" > ${logFile}
-
-	# FLASH
-	#flash -t ${CPU} -o ${fname} -d ${outDir} -m 15 -M 250 ${pair2} ${pair1}
-
-	# MERGE PAIRED AND UNPAIRED R2
-	# we used notCombined_1.fastq because we used R2 as R1 with flash
-	##cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq > ${outDir}${fname}_merged.fastq
-	#cat ${outDir}${fname}.extendedFrags.fastq ${outDir}${fname}.notCombined_1.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
-	#gzip ${outDir}${fname}.extendedFrags.fastq
-	#gzip ${outDir}${fname}.notCombined_1.fastq
-	#gzip ${outDir}${fname}.notCombined_2.fastq
-	
-	echo "_R1_001.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
-	echo "_R2_001.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${pair2}|wc -l)/4|bc >> ${logFile}
-	
-	echo "_assembled.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_assembled.fastq.gz|wc -l)/4|bc >> ${logFile}
+	cat ${outDir}${fname}.assembled.fastq ${outDir}${fname}.unassembled.forward.fastq | gzip -c > ${outDir}${fname}_merged.fastq.gz
+	gzip ${outDir}${fname}.assembled.fastq
+	gzip ${outDir}${fname}.unassembled.forward.fastq
+	gzip ${outDir}${fname}.unassembled.reverse.fastq
 	
 	echo "_merged.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
 	
 	
 	################# FILTER OUT READS > 300bp ################### 
@@ -139,14 +86,13 @@ do
 	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
 
 	echo "_pos.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# filter 2: eliminate CCR2 aspecifics
-	#mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
 	bbduk.sh -Xmx4g in=${outDir}${fname}_pos.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
 
 	echo "_Filt2.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	### check filtering
 	#bbduk.sh in=${outDir}${fname}_Filt2.fastq ref=${dataDir}SeqCCR5pos.fa k=25 mm=f edist=2 ow=t    
@@ -158,13 +104,13 @@ do
 	bbduk.sh -Xmx4g in=${outDir}${fname}_Filt2.fastq.gz ref=${linker} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=f
 
 	echo "_trim1.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# trimming of the adapters
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim1.fastq.gz ref=${adapters} out=${outDir}${fname}_trim2.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20
 
 	echo "_trim2.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	############
 	# CRISPRESSO
@@ -178,11 +124,12 @@ do
 	#CRISPResso -r1 ${outDir}${fname}_Filt3_pos.fastq.gz -a ${crispSeq} -g ${crispGuide} -o ${outDir} --min_identity_score 60 -p ${CPU}
 	#source deactivate
 
+
 	#trimming of the CCR5 sequence before the cut site
 	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30
 
 	echo "_trim3.fastq.gz: " >> ${logFile}
-	echo $(gzcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
+	echo $(zcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	######### FINAL filter ############ 
 	echo "START FINAL FILTER" >> ${logFile}
@@ -224,7 +171,7 @@ do
 	
 	#### convert from bam to bed
 	bedtools bamtobed -i ${outDir}${fname}_AlignmentSort.bam > ${outBedDir}${fname}_Alignment.bed
-	#convert2bed --input=bam --output=bed < ${outDir}${fname}_AlignmentSort.bam > ${outBedDir}${fname}_Alignment_V2.bed
+	#convert2bed --input=bam --output=bed < ${outDir}${fname}_AlignmentSort.bam > ${outDir}${fname}_Alignment_V2.bed
 
 	echo "_Alignment.bed: " >> ${logFile}
 	echo $(wc -l ${outBedDir}${fname}_Alignment.bed) >> ${logFile}
@@ -240,8 +187,6 @@ do
 	bedtools bamtobed -i ${outDir}${fname}_lowQ.bam > ${bedTMP}
 	bedtools shuffle -i ${bedTMP} -g ${chrSize} > ${shuffleBedTMP}
 	bedtools getfasta -fi ${genomeFasta} -bed ${shuffleBedTMP} -fo ${outDir}${fname}_lowQ.shuffle.fa
-	
-
 
 done
 

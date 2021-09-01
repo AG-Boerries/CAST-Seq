@@ -178,71 +178,7 @@ pcBarplot <- function(inputF, PAMlength = 3, binLength = 4)
 
 
 
-pcBarplotOLD <- function(inputF)
-{
-	# REGIONS SHOULD BE MOFIFIED ACCORDING TO GUIDE SEQUENCE !!!
-	heatMat <- read.xlsx(inputF)
-	heatMat <- heatMat[-1,-1]
 
-	#regions <- matrix(c(1,4,5,8,9,12,13,16,17,20, 21, 23), ncol = 2, byrow = TRUE)
-	#regions <- matrix(c(1,8,9,16,17,24,23,32,33,40, 41, 46), ncol = 2, byrow = TRUE)
-
-	#regions.short <- matrix(c(1,4,5,8,9,12,13,16,17,20), ncol = 2, byrow = TRUE)
-	regions <- matrix(c(1,8,9,16,17,24,25,32,33,40), ncol = 2, byrow = TRUE)
-
-	nbMiss <- c()
-	nbIndel <- c()
-	for(i in 1:nrow(regions))
-		{
-		idx.start <- regions[i,1]
-		idx.end <- regions[i,2]
-		heatMat.sub <- heatMat[, idx.start:idx.end]
-	
-		nbMiss <- c(nbMiss, sum(heatMat.sub == "A") + sum(heatMat.sub == "T") + sum(heatMat.sub == "G") + sum(heatMat.sub == "C"))
-		nbIndel <- c(nbIndel, sum(heatMat.sub == 1) + sum(heatMat.sub == -1))
-		}
-	# Get percentage
-	nbMiss <- nbMiss / (nrow(heatMat)*4) * 100
-	nbIndel <- nbIndel / (nrow(heatMat)*4) * 100
-
-	# PAM
-
-	# 41 no missmatch
-	# 43 T and C are missmatch
-	# 45 normal missmatch
-	# 42, 44, 46: normal indel
-
-	pam1.miss <- 0
-	pam2.miss <-  sum(heatMat[, 43] == "T") + sum(heatMat[, 43] == "C")# R so T and C are mismatches
-	pam3.miss <-  sum(heatMat[, 45] == "T") + sum(heatMat[, 45] == "C") + sum(heatMat[, 45] == "A") + sum(heatMat[, 45] == "G")
-	pamMiss <- pam1.miss + pam2.miss + pam3.miss
-	pamMiss <- pamMiss / (nrow(heatMat)*3) * 100
-
-	pamIndel <- sum(heatMat[, 41:46] == 1) + sum(heatMat[, 41:46] == -1)
-	pamIndel <- pamIndel / (nrow(heatMat)*3) * 100
-
-	nbMiss <- c(nbMiss, pamMiss)
-	nbIndel <- c(nbIndel, pamIndel)
-
-	regions.short <- matrix(c(1,4,5,8,9,12,13,16,17,20, 21, 23), ncol = 2, byrow = TRUE)
-	regions.label <- apply(regions.short, 1, paste, collapse = ":")
-
-	ggmat <- data.frame(mismatch = nbMiss, indel = nbIndel, regions = regions.label)
-	ggmat <- melt(ggmat)
-
-	ggmat$regions <- factor(ggmat$regions, levels = regions.label)
-
-	p <- ggplot(ggmat, aes(x=regions, y=value, fill=variable))
-	p <- p + geom_bar(width = 1, stat = "identity")
-	p <- p + scale_fill_grey() + theme_minimal()
-	p <- p + theme(text = element_text(size=17))
-	p <- p + scale_y_continuous(name="percentage")
-	p <- p + theme(axis.title.x=element_blank())
-
-	pdf(gsub(".xlsx", "_pcBarplot.pdf", inputF))
-	plot(p)
-	dev.off()
-}
 
 
 

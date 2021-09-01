@@ -14,7 +14,7 @@
 ###                                      ###
 ############################################
 
-toNum <- function(x) as.numeric(levels(x))[x]
+#toNum <- function(x) as.numeric(levels(x))[x]
 
 getRevComp <- function(x) as.character(reverseComplement(DNAString(x)))
 
@@ -264,9 +264,9 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	write.table(scoreN.mat, file.path(alnFolder, paste0(inputName, "_score_matrix.txt")), sep = "\t", quote = FALSE, row.names = TRUE)
 	
 	# Plot score boxplot
-	#ggmat <- melt(scoreN.mat)
-	ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
-	colnames(ggmat) <- c("Var1", "Var2", "value")
+	ggmat <- melt(scoreN.mat)
+	#ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
+	#colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var2 <- factor(ggmat$Var2, levels = rev(names(sort(colMeans(scoreN.mat)))))
 	
 	p <- ggplot(ggmat, aes(x = Var2, y = value))
@@ -280,9 +280,9 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	
 	scoreN.mat <- scoreN.mat[order(-rowMeans(scoreN.mat)), , drop = FALSE]
 	scoreN.mat <- scoreN.mat[1:min(c(10, nrow(scoreN.mat))), , drop = FALSE]
-	#ggmat <- melt(scoreN.mat[1:min(c(10, nrow(scoreN.mat))), ])
-	ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
-	colnames(ggmat) <- c("Var1", "Var2", "value")
+	ggmat <- melt(scoreN.mat[1:min(c(10, nrow(scoreN.mat))), , drop = FALSE])
+	#ggmat <- pivot_longer(data.table(ID = rownames(scoreN.mat), scoreN.mat), !ID)
+	#colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var1 <- factor(ggmat$Var1, levels = rev(names(sort(rowMeans(scoreN.mat)))))
 		
 	p <- ggplot(ggmat, aes(x = Var1, y = value))
@@ -295,9 +295,9 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
 	dev.off()
 		
 	# Plot N boxplot
-	#ggmat <- melt(alnN.mat)
-	ggmat <- pivot_longer(data.table(ID = rownames(alnN.mat), alnN.mat), !ID)
-	colnames(ggmat) <- c("Var1", "Var2", "value")
+	ggmat <- melt(alnN.mat)
+	#ggmat <- pivot_longer(data.table(ID = rownames(alnN.mat), alnN.mat), !ID)
+	#colnames(ggmat) <- c("Var1", "Var2", "value")
 	ggmat$Var2 <- factor(ggmat$Var2, levels = rev(names(sort(colMeans(alnN.mat)))))
 	
 	p <- ggplot(ggmat, aes(x = Var2, y = value))
