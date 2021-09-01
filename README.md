@@ -53,6 +53,9 @@ Requiered software and databases
 	* biomaRt
 	* tools
 	* karyoploteR
+	* UpSetR
+	* circlize
+	* tidyr
 	
 	* org.Hs.eg.db
 	* BSgenome.Hsapiens.UCSC.hg38
@@ -164,7 +167,7 @@ Additional parameters can be changed in the command above. Here is a description
 **--otsDistance** distance (bp) from the ON-target. Reads +/- this distance will be removed (default 50)<br/>
 **--surrounding_size** distance (bp) from the ON-target. Use for the scoring system (default 20000)<br/>
 **--flank1** name of first flanking sequence (default "flank1.fa")<br/>
-**--flank12** name of second flanking sequence (default "flank12.fa")<br/>
+**--flank2** name of second flanking sequence (default "flank2.fa")<br/>
 **--flankingSize** distance to consider for HMT (default 2500)<br/>
 **--random** number of random sequences to generate (default 10000)<br/>
 **--width** distance to extend the putative sites (default 250)<br/>
@@ -173,7 +176,7 @@ Additional parameters can be changed in the command above. Here is a description
 **--scoreCutoff** gRNA alignment score threshold (default *NULL*)<br/>
 **--hitsCutoff** minimum number of hits per site (default 1)<br/>
 **--saveReads** should reads fastq sequences be saved (default "no")<br/>
-**--species** name of sample species (default "hg") *so far only hg can be used*<br/>
+**--species** name of sample species (default "hg") *so far only hg and mm (Mouse) can be used*<br/>
 **--cpu** number of CPUs (default 2) *at least 4 is advised*<br/>
 **--pythonPath** python path (default "/usr/bin/python")<br/>
 
@@ -181,6 +184,16 @@ Additional parameters can be changed in the command above. Here is a description
 These parameters are only used when **--pipeline** "talen" is set.<br/>
 **--grnaR** name of gRNA (RIGHT) fasta file<br/>
 **--grnaL** name of gRNA (LEFT) fasta file<br/>
+
+#### OVERLAP specific parameters
+These parameters are only used when **--pipeline** "crispr_overlap" or "talen_overlap" is set.<br/>
+**--ovlDname** name of overlap directory within sample directory<br/>
+**--ovlName** name of overlap sample within overlap directory<br/>
+**--replicates** name of sample to be used in the overlap analysis<br/>
+**--repNames** labels of the replicates to be used in the overlap analysis<br/>
+**--repDname** name of a representative replicate (used to find the appropriate replicate files) file<br/>
+**--ovl** number of significant samples to be considered in the overlap analysis<br/>
+
 
 ## Authors
 
