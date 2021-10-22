@@ -3,64 +3,73 @@ library(openxlsx)
 library(ggridges)
 
 
+sample.current <- "EMD3"
 
-setwd(file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/EMD4/"))
+#setwd(file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-576086333/EMD/", sample.current))
+setwd(file.path("~/tmp/EMD_cluster/EMD/", sample.current))
+
 binFiles <- list.files(pattern = "_5kb_bins.xlsx", recursive = TRUE, full.names = TRUE)
 names(binFiles) <- gsub("_5kb_bins.xlsx", "", basename(binFiles))
+names(binFiles) <- gsub("EMD-sample", "", names(binFiles))
 
 binList <- lapply(binFiles, read.xlsx, sheet = 1)
 
-binList <- binList[1:4]
-
 ggList <- lapply(1:length(binList), function(j){
   binMat <- binList[[j]]
+  binMat.tot <- sum(binMat$TOT)
   
-  #binMat$POS <- ceiling(binMat$POS / 100)
-  #binMat$NEG <- ceiling(binMat$NEG / 100)
-  #binMat$TOT <- ceiling(binMat$TOT / 100)
-  
-  count.pos <- lapply(1:nrow(binMat), function(i){
-    if(binMat$POS[i] == 0) return(NA)
-    return(data.frame(start = binMat$start[i], strand = rep("POS", binMat$POS[i])))
-  })
-  count.pos <- count.pos[!is.na(count.pos)]
-  count.pos <- do.call(rbind, count.pos)
-  
-  count.neg <- lapply(1:nrow(binMat), function(i){
-    if(binMat$NEG[i] == 0) return(NA)
-    return(data.frame(start = binMat$start[i], strand = rep("NEG", binMat$NEG[i])))
-  })
-  count.neg <- count.neg[!is.na(count.neg)]
-  count.neg <- do.call(rbind, count.neg)
-  
-  count.tot <- lapply(1:nrow(binMat), function(i){
-    if(binMat$TOT[i] == 0) return(NA)
-    return(data.frame(start = binMat$start[i], strand = rep("TOT", binMat$TOT[i])))
-  })
-  count.tot <- count.tot[!is.na(count.tot)]
-  count.tot <- do.call(rbind, count.tot)
-  
-  ggmat <- do.call(rbind, list(count.pos, count.neg, count.tot))
-  ggmat$SAMPLE = names(binList)[j]
-  
-  #
-  ggmat <- do.call(rbind, list(ggmat[sample(which(ggmat$strand == "POS"), 1000), ],
-                               ggmat[sample(which(ggmat$strand == "NEG"), 1000), ],
-                               ggmat[sample(which(ggmat$strand == "TOT"), 1000), ]))
-  
+  count.pos <- binMat$POS / binMat.tot 
+  count.neg <- binMat$NEG / binMat.tot 
+
+  ggmat <- data.frame(start = rep(binMat$start, 2),
+                      count = c(count.pos, count.neg),
+                      strand = c(rep("POS", length(count.pos)), rep("NEG", length(count.neg))),
+                      event = c(rep("DEL", length(count.pos)), rep("INV", length(count.neg))),
+                      SAMPLE = names(binList)[j]
+                      )
   
   return(ggmat)
 })
 
-
 ggmat <- do.call(rbind, ggList)
 
-p <- ggplot(ggmat[ggmat$strand != "TOT", ], aes(x = start, y = SAMPLE, fill = strand))
-p <- p + geom_density_ridges(scale = 1, bandwidth = 100, alpha = 0.5)
+mylevels <- unlist(lapply(c(9:10), function(i) paste0(i , c("-1", "-2"))))
+ggmat$SAMPLE <- factor(ggmat$SAMPLE, levels = mylevels)
+ggmat <- ggmat[!is.na(ggmat$SAMPLE), ]
+
+# STRAND COLOR
+p <- ggplot(ggmat, aes(x = start, y = count, fill = strand, color = strand))
+p <- p + geom_area(alpha = 0.5, position = "identity")
 p <- p + theme_bw(base_size = 14)
 p <- p + xlab("") + ylab("")
+p <- p + facet_grid(rows = vars(ggmat$SAMPLE))
+p <- p + theme(strip.text.y = element_text(size=10, face = "bold", color="black"))
+p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+p <- p + scale_fill_manual(values=c(POS = rgb(245, 171, 173, maxColorValue = 255),
+                                    NEG = rgb(175, 174, 239, maxColorValue = 255)))
+p <- p + scale_color_manual(values=c(POS = rgb(245, 171, 173, maxColorValue = 255),
+                                     NEG = rgb(175, 174, 239, maxColorValue = 255)))
 
-ggsave(plot = p, filename = "~/tmp/test.pdf", height = 15, width = 10)
+myheight <- 2
+myheight <-myheight +  0.5*length(binList)
+ggsave(plot = p, filename = paste0("~/tmp/",sample.current ,"_strand.pdf"), width = 5, height = myheight)
 
-ggplot(count.tot, aes(start)) +
-  geom_density(adjust = 5)
+# EVENT COLOR
+p <- ggplot(ggmat, aes(x = start, y = count, fill = event, color = event))
+p <- p + geom_area(alpha = 0.5, position = "identity")
+p <- p + theme_bw(base_size = 14)
+p <- p + xlab("") + ylab("")
+p <- p + facet_grid(rows = vars(ggmat$SAMPLE))
+p <- p + theme(strip.text.y = element_text(size=10, face = "bold", color="black"))
+p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+p <- p + scale_color_manual(values=c(DEL = "orange2",
+                                     INV = "orchid2"))
+p <- p + scale_fill_manual(values=c(DEL = "orange2",
+                                    INV = "orchid2"))
+
+ggsave(plot = p, filename = paste0("~/tmp/",sample.current ,"_event.pdf"), width = 5, height = myheight)
+
+
+
+
+

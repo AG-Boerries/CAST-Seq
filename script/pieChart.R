@@ -102,7 +102,8 @@ getNBmm <- function(ref, v)
 
 pcBarplot <- function(inputF, PAMlength = 3, binLength = 4)
 {
-	# REGIONS SHOULD BE MOFIFIED ACCORDING TO GUIDE SEQUENCE !!!
+	if(file.exists(inputF)){
+		# REGIONS SHOULD BE MOFIFIED ACCORDING TO GUIDE SEQUENCE !!!
 	heatMat <- read.xlsx(inputF, sheet = 1)
 	heatMat <- heatMat[, -1] 
 	
@@ -172,6 +173,9 @@ pcBarplot <- function(inputF, PAMlength = 3, binLength = 4)
 	pdf(gsub(".xlsx", "_pcBarplot.pdf", inputF))
 	plot(p)
 	dev.off()
+	
+	}
+	
 	
 }
 

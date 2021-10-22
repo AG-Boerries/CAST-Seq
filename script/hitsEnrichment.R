@@ -8,6 +8,32 @@
 ###                                      ###
 ############################################
 
+
+addNormalizeCount <- function(m, libSize){
+  #m <- read.delim(inputFile)
+  reads <- m$read
+  hits <- m$hits
+  width <- m$width
+  
+  # PER MILLION (CPM like)
+  reads.cpm <- (reads*10^6) / libSize
+  hits.cpm <- (hits*10^6) / libSize
+
+  # PER MILLION PER BP (TPM like)
+  reads.tpm <- ((reads / width)*10^6) / libSize
+  hits.tpm <- ((hits / width)*10^6) / libSize
+  
+  # ADD FEATURES
+  m$read.perM <- log2(reads.cpm)
+  m$read.perM.perBP <- reads.tpm
+  m$hits.perM <- log2(hits.cpm)
+  m$hits.perM.perBP <- hits.tpm
+  
+  #write.table(m, inputFile, sep = "\t", quote = FALSE, row.names = FALSE)
+  return(m)
+}
+
+
 getLimits <- function(m, chrFile)
 {
 	chr.size <- read.delim(chrFile, stringsAsFactors = FALSE, header = FALSE)
@@ -110,6 +136,12 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 		df.spe <- cl.test
 		df.spe <- cbind(df.spe, read.ctl = 1, hits.ctl = 1)
 		df.final <- df.spe	
+	}else if(length(queryHits(gr.ovl)) == nrow(cl.test)){
+	  df.ovl <- data.frame(cl.test[queryHits(gr.ovl),], cl.ref[subjectHits(gr.ovl),])
+	  # MERGE MULTIPLE OVERLAP
+	  df.ovl <- overlapFiltering(df.ovl)
+	  df.spe <- data.frame()
+	  df.final <- df.ovl
 	}else{
 		df.ovl <- data.frame(cl.test[queryHits(gr.ovl),], cl.ref[subjectHits(gr.ovl),])
 		df.spe <- cl.test[-queryHits(gr.ovl),]
@@ -123,16 +155,14 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 	
 	}
 	
-	
-	
 	# GET WIDTH
 	df.final <- cbind(df.final, width.raw = (df.final$end - df.final$start) - (size * 2),
 		width = df.final$end - df.final$start)
 
 	# HYPERG TEST
-	fhList <- lapply(1:nrow(df.final), function(i)
+	fhList <- lapply(1:nrow(df.final), function(i){
 		doFisher(df.final[i, "read"], nbTest, df.final[i, "read.ctl"], nbRef)
-		)
+		})
 	fhList <- do.call(rbind, fhList)
 
 	df.final <- cbind(df.final, fhList)
@@ -142,11 +172,14 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 
 	# MARK ARTIFICIAL READS
 	df.final$artificial <- NA
-	df.final$artificial[1:nrow(df.spe)] <- "yes"
+	if(nrow(df.spe) != 0) df.final$artificial[1:nrow(df.spe)] <- "yes"
 
 	# SORT ACCORDING TO PVALUE
 	df.final <- df.final[order(df.final$pvalue, -df.final$OddRatio), ]
 
+	# NORMALIZE COUNT
+	df.final <- addNormalizeCount(m = df.final, libSize = nbTest)
+	
 	# SAVE
 	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
 	write.xlsx(df.final, outName, overwrite = TRUE)
@@ -218,9 +251,12 @@ nbRef <- nrow(read.delim("UT_custom_Alignment.bed", header = FALSE))
 size <- 250
 
 
-
-
-
+testFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/EMD1_4/EMD-sample13-1/results/guide_aln/EMD-sample13-1_Alignment_hits.bed")
+refFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/EMD1_4/EMD-sample13-1/results/guide_aln/EMD-sample23-1_Alignment_hits.bed")
+chrFile <- file.path("~/Research/CASTSeq/pipelineGit/annotations/human/chrom.sizes")
+nbTest <- 10^6
+nbRef <- 10^6
+size <- 250
 
 ###############################################
 # OLD

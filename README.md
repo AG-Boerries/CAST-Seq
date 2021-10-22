@@ -33,7 +33,7 @@ Requiered software and databases
 	* seqtk from https://github.com/lh3/seqtk
 
 	
-3. Databases from ANNOVAR
+3. Annotation for bowtie2
 	* bowtie2Index
 	* genome fasta
 

@@ -51,6 +51,10 @@ write.xlsx(compList, "COL7A1-2-D10Ag1g2_RUN1_with_RUN2.xlsx")
 
 makeUpset("COL7A1-2-D10Ag1g2_RUN1_with_RUN2.xlsx")
 
+
+
+
+
 # COL17A1-1-g1 with COL17A1-2-g1
 siteFiles <- c(file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL17A1-1-g1/results/guide_aln/COL17A1-1-g1_w250_FINAL.xlsx"),
                file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL17A1-2-g1/results/guide_aln/COL17A1-2-g1_w250_FINAL.xlsx")
@@ -972,3 +976,56 @@ setwd(ovlDir)
 compList <- dfComparisonList(siteFiles, names(siteFiles), width = 1500, nb.signif = 1, NBS = TRUE)
 write.xlsx(compList, "UNC-u3d1_U3_OVL1.xlsx", overwrite = TRUE)
 makeUpset("UNC-u3d1_U3_OVL1.xlsx")
+
+
+
+################################
+# NICKASE OVL2 (JULIA EMAIL 12.10.21)
+
+# COL7A1-1-g1 with COL7A1-2-g1
+siteFiles <- c(file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-1-g1/results/guide_aln/COL7A1-1-g1_w250_FINAL.xlsx"),
+               file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-g1/results/guide_aln/COL7A1-2-g1_w250_FINAL.xlsx")
+)
+names(siteFiles) <- sapply(strsplit(siteFiles, split = "/"), function(i) i[7])
+
+ovlDir <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/Nickase_OVL2/COL7A1-g1_OVL2")
+dir.create(ovlDir, recursive = TRUE)
+setwd(ovlDir)
+compList <- dfComparisonList(siteFiles, names(siteFiles), width = 2000, nb.signif = 2, NBS = TRUE)
+write.xlsx(compList, "COL7A1-g1_OVL2.xlsx")
+
+makeUpset("COL7A1-g1_OVL2.xlsx")
+
+# COL7A1-1-g2 with COL7A1-2-g2
+siteFiles <- c(file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-1-g2/results/guide_aln/COL7A1-1-g2_w250_FINAL.xlsx"),
+               file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-g2/results/guide_aln/COL7A1-2-g2_w250_FINAL.xlsx")
+)
+names(siteFiles) <- sapply(strsplit(siteFiles, split = "/"), function(i) i[7])
+
+ovlDir <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/Nickase_OVL2/COL7A1-g2_OVL2")
+dir.create(ovlDir)
+setwd(ovlDir)
+compList <- dfComparisonList(siteFiles, names(siteFiles), width = 2000, nb.signif = 2, NBS = TRUE)
+write.xlsx(compList, "COL7A1-g2_OVL2.xlsx")
+
+makeUpset("COL7A1-g2_OVL2.xlsx")
+
+
+# COL7A1-2-D10Ag1g2 (first vs. second dataset)
+siteFiles <- c(file.path("~/Research/CASTSeq/pipelineGit/samples/COL7A1_G1_G2/results_middle/guide_aln/Treated-G1-G2_S4_L001_w250_FINAL.xlsx"),
+               file.path("~/Research/CASTSeq/pipelineGit/samples/Nickase_Jan21/COL7A1-2-D10Ag1g2/results/guide_aln/COL7A1-2-D10Ag1g2_w250_FINAL.xlsx")
+)
+names(siteFiles) <- c("COL7A1-2-D10Ag1g2_RUN1", "COL7A1-2-D10Ag1g2_RUN2")
+
+ovlDir <- file.path("~/Research/CASTSeq/pipelineGit/samples_overlap/Nickase_OVL2/COL7A1-2-D10Ag1g2_OVL2")
+dir.create(ovlDir)
+setwd(ovlDir)
+compList <- dfComparisonList(siteFiles, names(siteFiles), width = 2000, nb.signif = 2, NBS = TRUE)
+write.xlsx(compList, "COL7A1-2-D10Ag1g2_OVL2.xlsx", overwrite = TRUE)
+
+makeUpset("COL7A1-2-D10Ag1g2_OVL2.xlsx")
+
+
+
+
+

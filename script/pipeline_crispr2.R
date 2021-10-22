@@ -1,5 +1,5 @@
 
-runPipelineDoubleNickase <- function()
+runPipeline_crispr2 <- function()
 {
   
   ##########################################################################################
@@ -62,9 +62,6 @@ runPipelineDoubleNickase <- function()
   nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz"))))
   nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz"))))
   
-  print(nbReads.sample)
-  print(nbReads.control)
-  
   ################     TEST VS. CONTROL ENRICHMENT    ################
   print("################     TEST VS. CONTROL ENRICHMENT    ################")
   
@@ -90,18 +87,11 @@ runPipelineDoubleNickase <- function()
   # DO GUIDE ALIGNMENT ON REAL SEQUENCES
   guideD <- resultD
   getGuideAlignment2(inputF = file.path(resultD, paste0(sampleName, "_w", w, ".xlsx")),
-                     guide1 = refSeq1, guide2 = refSeq2,
-                     alnFolder = guideD,
-                     gnm = GNM
+                    guide1 = refSeq1, guide2 = refSeq2,
+                    alnFolder = guideD,
+                    gnm = GNM
   )
-  file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))
-  
-  # CALCULATE DISTANCE BETWEEN THE 2 gRNAs
-  getgRNADistance(inputF = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-                  guide1 = refSeq1, guide2 = refSeq2)
-  
-  # ADD CUMULATIVE SCORE
-  getCumulScore(inputF = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")))
+  file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
   
   # GENERATE RANDOM SEQUENCE BED
   randomD <- file.path(sampleD, "results", "random")
@@ -117,18 +107,11 @@ runPipelineDoubleNickase <- function()
     
     # DO GUIDE ALIGNMENT ON RANDOM SEQUENCES
     getGuideAlignment2(inputF = file.path(randomD, paste0(randomName, ".bed")),
-                       guide1 = refSeq1, guide2 = refSeq2,
-                       alnFolder = randomD,
-                       gnm = GNM
+                      guide1 = refSeq1, guide2 = refSeq2,
+                      alnFolder = randomD,
+                      gnm = GNM
     )	
     file.remove(list.files(randomD, pattern = "_TMP.txt", full.names = TRUE))
-    
-    # CALCULATE DISTANCE BETWEEN THE 2 gRNAs
-    getgRNADistance(inputF = file.path(randomD, paste0(randomName, "_aln_stat.xlsx")),
-                    guide1 = refSeq1, guide2 = refSeq2)
-    
-    # ADD CUMULATIVE SCORE
-    getCumulScore(inputF = file.path(randomD, paste0(randomName, "_aln_stat.xlsx")))
   }
   
   # filt name
@@ -140,44 +123,44 @@ runPipelineDoubleNickase <- function()
   
   # PLOT GUIDE ALIGNMENT
   guidePlot1(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-             file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap.gRNA1.pdf")),
-             score = NULL, pv = NULL, ref = refSeq1)# ALL
+            file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap.gRNA1.pdf")),
+            score = NULL, pv = NULL, ref = refSeq1)# ALL
   
   guidePlot2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-             file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap.gRNA2.pdf")),
-             score = NULL, pv = NULL, ref = refSeq2)# ALL
+            file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap.gRNA2.pdf")),
+            score = NULL, pv = NULL, ref = refSeq2)# ALL
   
   if(filtName != ""){		  
     guidePlot1(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-               file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".gRNA1.pdf")),
-               hits = hits.cutoff,
-               score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
+              file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".gRNA1.pdf")),
+              hits = hits.cutoff,
+              score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
     
     guidePlot2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-               file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".gRNA2.pdf")),
-               hits = hits.cutoff,
-               score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant		  
+              file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".gRNA2.pdf")),
+              hits = hits.cutoff,
+              score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant		  
   }	  
   
   # LOGO PLOT
   logoPlot1(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-            file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo.gRNA1.pdf")),
-            score = NULL, pv = NULL, ref = refSeq1)# ALL
+           file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo.gRNA1.pdf")),
+           score = NULL, pv = NULL, ref = refSeq1)# ALL
   
   logoPlot2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-            file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo.gRNA2.pdf")),
-            score = NULL, pv = NULL, ref = refSeq2)# ALL
+           file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo.gRNA2.pdf")),
+           score = NULL, pv = NULL, ref = refSeq2)# ALL
   
   if(filtName != ""){		
     logoPlot1(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-              file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo_", filtName, ".gRNA1.pdf")),
-              hits = hits.cutoff,
-              score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
+             file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo_", filtName, ".gRNA1.pdf")),
+             hits = hits.cutoff,
+             score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
     
     logoPlot2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat.xlsx")),
-              file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo_", filtName, ".gRNA2.pdf")),
-              hits = hits.cutoff,
-              score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant
+             file.path(guideD, paste0(sampleName, "_w", w, "_aln_logo_", filtName, ".gRNA2.pdf")),
+             hits = hits.cutoff,
+             score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant
   }
   
   ################     FLANKING REGIONS    ################ 
@@ -204,10 +187,10 @@ runPipelineDoubleNickase <- function()
   
   ################     DEFINE GROUPS    ################ 
   print("################     DEFINE GROUPS    ################ ")
-  assignGroupsDoubleNickase(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK.xlsx")),
-                file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-                otsBed,
-                pv.cutoff)
+  assignGroups2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK.xlsx")),
+               file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
+               otsBed,
+               pv.cutoff)
   
   groupSummary(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
                file.path(guideD, paste0(sampleName, "_w", w, "_group_summary.xlsx")),
@@ -223,12 +206,12 @@ runPipelineDoubleNickase <- function()
     )
     
     guidePlot1(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-               file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_OMT.gRNA1.pdf")),
-               score = NULL, pv = pv.cutoff, ref = refSeq1, OMTonly = TRUE)# OMT  
+              file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_OMT.gRNA1.pdf")),
+              score = NULL, pv = pv.cutoff, ref = refSeq1, OMTonly = TRUE)# OMT  
     
     guidePlot2(file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
-               file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_OMT.gRNA2.pdf")),
-               score = NULL, pv = pv.cutoff, ref = refSeq2, OMTonly = TRUE)# OMT  
+              file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_OMT.gRNA2.pdf")),
+              score = NULL, pv = pv.cutoff, ref = refSeq2, OMTonly = TRUE)# OMT  
   }		
   
   if(FALSE){
@@ -250,7 +233,7 @@ runPipelineDoubleNickase <- function()
     pcBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap.xlsx")))# ALL
     if(file.exists(paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".xlsx"))) pcBarplot(file.path(guideD, paste0(sampleName, "_w", w, "_aln_heatmap_", filtName, ".xlsx")))# Significant
   }
-  
+
   ################     GENE ANNOTATION    ################ 
   print("################     GENE ANNOTATION    ################ ")
   # Annotation
@@ -320,19 +303,11 @@ runPipelineDoubleNickase <- function()
   # DO GUIDE ALIGNMENT ON REAL SEQUENCES
   guideD <- resultD
   getGuideAlignment2(inputF = file.path(resultD, paste0(controlName, "_w", w, ".xlsx")),
-                     guide1 = refSeq1, guide2 = refSeq2,
-                     alnFolder = guideD,
-                     gnm = GNM
+                    guide1 = refSeq1, guide2 = refSeq2,
+                    alnFolder = guideD,
+                    gnm = GNM
   )
   file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))					  
-  
-  # CALCULATE DISTANCE BETWEEN THE 2 gRNAs
-  getgRNADistance(inputF = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-                  guide1 = refSeq1, guide2 = refSeq2)
-  
-  # ADD CUMULATIVE SCORE
-  getCumulScore(inputF = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")))
-  
   
   # filt name
   filtName <- ""
@@ -343,8 +318,8 @@ runPipelineDoubleNickase <- function()
   
   # PLOT GUIDE ALIGNMENT
   guidePlot1(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-             file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap.gRNA1.pdf")),
-             score = NULL, pv = NULL, ref = refSeq1)# ALL
+            file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap.gRNA1.pdf")),
+            score = NULL, pv = NULL, ref = refSeq1)# ALL
   
   guidePlot2(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
              file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap.gRNA2.pdf")),
@@ -352,35 +327,35 @@ runPipelineDoubleNickase <- function()
   
   if(filtName != ""){		  
     guidePlot1(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-               file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_", filtName, ".gRNA1.pdf")),
-               hits = hits.cutoff,
-               score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant		  
+              file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_", filtName, ".gRNA1.pdf")),
+              hits = hits.cutoff,
+              score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant		  
     
     guidePlot2(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-               file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_", filtName, ".gRNA2.pdf")),
-               hits = hits.cutoff,
-               score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant		  
+              file.path(guideD, paste0(controlName, "_w", w, "_aln_heatmap_", filtName, ".gRNA2.pdf")),
+              hits = hits.cutoff,
+              score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant		  
   }	  
   
   # LOGO PLOT
   logoPlot1(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-            file.path(guideD, paste0(controlName, "_w", w, "_aln_logo.gRNA1.pdf")),
-            score = NULL, pv = NULL, ref = refSeq1)# ALL
+           file.path(guideD, paste0(controlName, "_w", w, "_aln_logo.gRNA1.pdf")),
+           score = NULL, pv = NULL, ref = refSeq1)# ALL
   
   logoPlot2(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-            file.path(guideD, paste0(controlName, "_w", w, "_aln_logo.gRNA2.pdf")),
-            score = NULL, pv = NULL, ref = refSeq2)# ALL
+           file.path(guideD, paste0(controlName, "_w", w, "_aln_logo.gRNA2.pdf")),
+           score = NULL, pv = NULL, ref = refSeq2)# ALL
   
   if(filtName != ""){		
     logoPlot1(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-              file.path(guideD, paste0(controlName, "_w", w, "_aln_logo_", filtName, ".gRNA1.pdf")),
-              hits = hits.cutoff,
-              score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
+             file.path(guideD, paste0(controlName, "_w", w, "_aln_logo_", filtName, ".gRNA1.pdf")),
+             hits = hits.cutoff,
+             score = score.cutoff, pv = pv.cutoff, ref = refSeq1)# Significant
     
     logoPlot2(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat.xlsx")),
-              file.path(guideD, paste0(controlName, "_w", w, "_aln_logo_", filtName, ".gRNA2.pdf")),
-              hits = hits.cutoff,
-              score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant
+             file.path(guideD, paste0(controlName, "_w", w, "_aln_logo_", filtName, ".gRNA2.pdf")),
+             hits = hits.cutoff,
+             score = score.cutoff, pv = pv.cutoff, ref = refSeq2)# Significant
   }
   
   ################     FLANKING REGIONS    ################ 
@@ -407,10 +382,10 @@ runPipelineDoubleNickase <- function()
   
   ################     DEFINE GROUPS    ################ 
   print("################     DEFINE GROUPS    ################ ")
-  assignGroupsDoubleNickase(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK.xlsx")),
-                file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
-                otsBed,
-                pv.cutoff)
+  assignGroups2(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK.xlsx")),
+               file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
+               otsBed,
+               pv.cutoff)
   
   groupSummary(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP.xlsx")),
                file.path(guideD, paste0(controlName, "_w", w, "_group_summary.xlsx")),
@@ -448,7 +423,7 @@ runPipelineDoubleNickase <- function()
     
     
   }
-  
+
   ################     GENE ANNOTATION    ################ 
   print("################     GENE ANNOTATION    ################ ")
   # Annotation

@@ -526,6 +526,12 @@ otsF <- file.path("/home/gandrieux/offTargets/Giando/pipelineGit/samples/HBG1Rev
 otsD <- 50
 getDelta(inputFile, otsF, otsD)
 
+
+inputFile = file.path("~/Research/CASTSeq/pipelineGit/samples/GENEWIZ_90-576086333/AZ/gXm_human/233-Cas9-gXm/results/guide_aln/233-Cas9-gXm_Alignment.bed")
+otsF = file.path("~/Research/CASTSeq/pipelineGit/samples/GENEWIZ_90-576086333/AZ/gXm_human/233-Cas9-gXm/data/ots.bed")
+otsD = 50
+distance = 2500
+
 deltaF <- file.path("/home/gandrieux/offTargets/Giando/test/Rev-196-1_S4_L001_Alignment_delta.bed")
 deltaDensity(deltaF, otsF, distance)
 

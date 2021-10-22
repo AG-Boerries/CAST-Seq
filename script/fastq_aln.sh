@@ -137,6 +137,8 @@ do
 	echo "START FILTERING" >> ${logFile}
 	# filter 1: find reads that contain the CCR5 sequence before the cut site
 	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
+  #mv ${outDir}${fname}_pos.fastq.gz ${outDir}${fname}_pos.SAVE.fastq.gz
+  #mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
 
 	echo "_pos.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -191,6 +193,8 @@ do
 
 
 	############## check quality #########################
+	fastqc -o ${outDir} --noextract ${pair1}
+	fastqc -o ${outDir} --noextract ${pair2}
 	fastqc -o ${outDir} --noextract ${outDir}${fname}_merged.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_merged_filt.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_pos.fastq

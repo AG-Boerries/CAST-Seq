@@ -194,6 +194,381 @@ assignGroups <- function(realF, rdF, otsF, cutoff)
 	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
+assignGroups2 <- function(realF, rdF, otsF, cutoff)
+{
+  ots <- read.delim(otsF, header = FALSE)
+  print(realF)
+  print(file.exists(realF))
+  
+  print(rdF)
+  print(file.exists(rdF))
+  
+  realM <- read.xlsx(realF, sheet = 1)
+  rdM <- read.xlsx(rdF, sheet = 1)
+  
+  realM.bf <- getBestFlanking(realM)
+  rdM.bf <- getBestFlanking(rdM)
+  
+  score.cutoff1 <- sort(rdM[, "score.gRNA1"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
+  score.cutoff2 <- sort(rdM[, "score.gRNA2"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
+  
+  score <- sapply(1:nrow(realM), function(x) max(c(realM[x, "score.gRNA1"], realM[x, "score.gRNA2"])))
+  
+  #flanking.cutoff <- sort(rdM.bf, decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# flanking length of the top XX%
+  flanking.cutoff <- 25
+  
+  score.pv1 <- unlist(lapply(realM[, "score.gRNA1"], getEmpiricalPV, x = rdM[, "score.gRNA1"], type = "greater"))
+  score.adj.pv1 <- p.adjust(score.pv1, method = "BH")
+  score.pv2 <- unlist(lapply(realM[, "score.gRNA2"], getEmpiricalPV, x = rdM[, "score.gRNA2"], type = "greater"))
+  score.adj.pv2 <- p.adjust(score.pv2, method = "BH")
+  
+  flanking.pv <- unlist(lapply(realM.bf, getEmpiricalPV, x = rdM.bf, type = "greater"))
+  flanking.adj.pv <- p.adjust(flanking.pv, method = "BH")
+  #print(score.cutoff)
+  #print(flanking.cutoff)	
+  
+  if(nrow(realM) > 10){
+    # plot score.cutoff (REAL)
+    ggmat <- data.frame(dist = realM[, "score.gRNA1"])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = score.cutoff1,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=score.cutoff1, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
+           width = 6, height = 6)
+    
+    ggmat <- data.frame(dist = realM[, "score.gRNA2"])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = score.cutoff2,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=score.cutoff2, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
+           width = 6, height = 6)
+    
+  }
+  
+  if(length(realM.bf) > 10){
+    # plot flanking.cutoff (REAL)
+    ggmat <- data.frame(dist = realM.bf[realM.bf <= 100])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = flanking.cutoff,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=flanking.cutoff, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+           width = 6, height = 6)
+  }
+  
+  # plot score.cutoff (RANDOM)
+  ggmat <- data.frame(dist = rdM[, "score.gRNA1"])
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = score.cutoff1,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=score.cutoff1, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("guide alignment score")
+  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
+         width = 6, height = 6)
+  
+  ggmat <- data.frame(dist = rdM[, "score.gRNA2"])
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = score.cutoff2,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=score.cutoff2, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("guide alignment score")
+  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
+         width = 6, height = 6)
+  
+  
+  # plot flanking.cutoff (RANDOM)
+  ggmat <- data.frame(dist = rdM.bf)
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = flanking.cutoff,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=flanking.cutoff, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("substring length (bp)")
+  p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+         width = 6, height = 6)
+  
+  
+  score.pv <- sapply(1:length(score.pv1), function(x) min(c(score.pv1[x], score.pv2[x])))
+  score.adj.pv <- p.adjust(score.pv, method = "BH")
+  
+  gRNA <- sapply(1:length(score.pv), function(x){
+    grnas <- c("gRNA1", "gRNA2")
+    return(toString(grnas[which(c(score.pv1[x], score.pv2[x]) == score.pv[x])]))
+  })
+  
+  #
+  mygroups <- rep("NBS", nrow(realM))
+  mygroups[realM.bf >= flanking.cutoff] <- "HMT"
+  mygroups[score.pv < cutoff] <- "OMT"# QV or PV
+  
+  mygroups2 <- rep(NA, nrow(realM))
+  #mygroups2[mygroups == "off.target" & (realM.bf > flanking.cutoff)] <- "yes"
+  mygroups2[mygroups == "OMT" & (realM.bf >= flanking.cutoff)] <- "yes"
+  mygroups2[mygroups == "HMT"] <- "yes"
+  
+  mygroups3 <- rep(NA, nrow(realM))
+  ld.idx <- isLargeDel(realM, ots)
+  #print(length(ld.idx))
+  if(length(ld.idx)!=0){
+    if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
+  }
+  
+  realM$group <- mygroups
+  realM$gRNA <- gRNA
+  realM$score <- score
+  
+  realM$is.ON <- getONidx(realM, otsF)
+  
+  realM$is.HMT <- mygroups2
+  realM$is.large.del. <- mygroups3
+  
+  realM$OMT.pvalue <- score.pv 
+  realM$OMT.adj.pvalue <- score.adj.pv 
+  realM$HMT.pvalue <- flanking.pv
+  realM$HMT.adj.pvalue <- flanking.adj.pv
+  
+  write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
+}
+
+assignGroupsDoubleNickase <- function(realF, rdF, otsF, cutoff)
+{
+  ots <- read.delim(otsF, header = FALSE)
+  print(realF)
+  print(file.exists(realF))
+  
+  print(rdF)
+  print(file.exists(rdF))
+  
+  realM <- read.xlsx(realF, sheet = 1)
+  rdM <- read.xlsx(rdF, sheet = 1)
+  
+  realM.bf <- getBestFlanking(realM)
+  rdM.bf <- getBestFlanking(rdM)
+  
+  score.cutoff1 <- sort(rdM[, "score.gRNA1"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
+  score.cutoff2 <- sort(rdM[, "score.gRNA2"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
+  score.cutoff <- sort(rdM[, "score"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
+  
+  #flanking.cutoff <- sort(rdM.bf, decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# flanking length of the top XX%
+  flanking.cutoff <- 25
+  
+  score.pv1 <- unlist(lapply(realM[, "score.gRNA1"], getEmpiricalPV, x = rdM[, "score.gRNA1"], type = "greater"))
+  score.adj.pv1 <- p.adjust(score.pv1, method = "BH")
+  score.pv2 <- unlist(lapply(realM[, "score.gRNA2"], getEmpiricalPV, x = rdM[, "score.gRNA2"], type = "greater"))
+  score.adj.pv2 <- p.adjust(score.pv2, method = "BH")
+  
+  score.pv <- unlist(lapply(realM[, "score"], getEmpiricalPV, x = rdM[, "score"], type = "greater"))
+  score.adj.pv <- p.adjust(score.pv, method = "BH")
+  
+  flanking.pv <- unlist(lapply(realM.bf, getEmpiricalPV, x = rdM.bf, type = "greater"))
+  flanking.adj.pv <- p.adjust(flanking.pv, method = "BH")
+  #print(score.cutoff)
+  #print(flanking.cutoff)	
+  
+  if(nrow(realM) > 10){
+    # plot score.cutoff (REAL)
+    ggmat <- data.frame(dist = realM[, "score.gRNA1"])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = score.cutoff1,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=score.cutoff1, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
+           width = 6, height = 6)
+    
+    ggmat <- data.frame(dist = realM[, "score.gRNA2"])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = score.cutoff2,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=score.cutoff2, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
+           width = 6, height = 6)
+    
+    ggmat <- data.frame(dist = realM[, "score"])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = score.cutoff,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=score.cutoff, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF),
+           width = 6, height = 6)
+    
+  }
+  
+  if(length(realM.bf) > 10){
+    # plot flanking.cutoff (REAL)
+    ggmat <- data.frame(dist = realM.bf[realM.bf <= 100])
+    p <- ggplot(ggmat) + 
+      geom_density(aes(x=dist))
+    p <- p + annotate("rect", xmin = flanking.cutoff,
+                      xmax = Inf,
+                      ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+    p <- p + geom_vline(xintercept=flanking.cutoff, 
+                        color = "black", size=2)
+    p <- p + theme_bw(base_size = 16)
+    p <- p + xlab("substring length (bp)")
+    p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+           width = 6, height = 6)
+  }
+  
+  # plot score.cutoff (RANDOM)
+  ggmat <- data.frame(dist = rdM[, "score.gRNA1"])
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = score.cutoff1,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=score.cutoff1, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("guide alignment score")
+  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
+         width = 6, height = 6)
+  
+  ggmat <- data.frame(dist = rdM[, "score.gRNA2"])
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = score.cutoff2,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=score.cutoff2, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("guide alignment score")
+  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
+         width = 6, height = 6)
+  
+  ggmat <- data.frame(dist = rdM[, "score"])
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = score.cutoff,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=score.cutoff, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("guide alignment score")
+  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF),
+         width = 6, height = 6)
+  
+  
+  # plot flanking.cutoff (RANDOM)
+  ggmat <- data.frame(dist = rdM.bf)
+  p <- ggplot(ggmat) + 
+    geom_density(aes(x=dist))
+  p <- p + annotate("rect", xmin = flanking.cutoff,
+                    xmax = Inf,
+                    ymin = -Inf, ymax = Inf, fill = "blue3", alpha = .2)
+  p <- p + geom_vline(xintercept=flanking.cutoff, 
+                      color = "black", size=2)
+  p <- p + theme_bw(base_size = 16)
+  p <- p + xlab("substring length (bp)")
+  p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+         width = 6, height = 6)
+  
+  which_signif <- sapply(1:length(score.pv), function(x){
+    mystr <- c()
+    if(score.pv[x] < cutoff) mystr <- c(mystr, "CUMULATIVE") 
+    if(score.pv1[x] < cutoff) mystr <- c(mystr, "gRNA1") 
+    if(score.pv2[x] < cutoff) mystr <- c(mystr, "gRNA2")
+    return(toString(mystr))  
+  })
+  
+  #
+  mygroups <- rep("NBS", nrow(realM))
+  mygroups[realM.bf >= flanking.cutoff] <- "HMT"
+  mygroups[score.pv < cutoff] <- "OMT"# QV or PV
+  
+  mygroups2 <- rep(NA, nrow(realM))
+  #mygroups2[mygroups == "off.target" & (realM.bf > flanking.cutoff)] <- "yes"
+  mygroups2[mygroups == "OMT" & (realM.bf >= flanking.cutoff)] <- "yes"
+  mygroups2[mygroups == "HMT"] <- "yes"
+  
+  mygroups3 <- rep(NA, nrow(realM))
+  ld.idx <- isLargeDel(realM, ots)
+  #print(length(ld.idx))
+  if(length(ld.idx)!=0){
+    if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
+  }
+  
+  realM$group <- mygroups
+
+  realM$is.ON <- getONidx(realM, otsF)
+  realM$which.signif <- which_signif
+  
+  realM$is.HMT <- mygroups2
+  realM$is.large.del. <- mygroups3
+  
+  realM$OMT.pvalue <- score.pv 
+  realM$OMT.adj.pvalue <- score.adj.pv 
+  
+  realM$OMT.pvalue.gRNA1 <- score.pv1 
+  realM$OMT.adj.pvalue.gRNA1 <- score.adj.pv1
+  
+  realM$OMT.pvalue.gRNA2 <- score.pv2 
+  realM$OMT.adj.pvalue.gRNA2 <- score.adj.pv2
+  
+  realM$HMT.pvalue <- flanking.pv
+  realM$HMT.adj.pvalue <- flanking.adj.pv
+  
+  write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
+}
+
 assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
 {
 	ots <- read.delim(otsF, header = FALSE)

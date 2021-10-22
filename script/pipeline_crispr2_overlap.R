@@ -1,5 +1,5 @@
 
-runPipelineDoubleNickaseOverlap <- function()
+runPipeline_crispr2_overlap <- function()
 {
   
   ##########################################################################################
@@ -32,7 +32,7 @@ runPipelineDoubleNickaseOverlap <- function()
   
   print(siteFiles)
   if(length(siteFiles)<2) stop("at least two files are needed to perform overlap analysis")
-
+  
   compList <- dfComparisonList(siteFiles, names(siteFiles), width = distance.cutoff, nb.signif = nb.ovl, NBS = TRUE)
   write.xlsx(compList, file.path(ovlD, paste0(ovlName, ".xlsx")), overwrite = TRUE)
   makeUpset(file.path(ovlD, paste0(ovlName, ".xlsx")))
@@ -56,13 +56,6 @@ runPipelineDoubleNickaseOverlap <- function()
   )
   file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))
   
-  # CALCULATE DISTANCE BETWEEN THE 2 gRNAs
-  getgRNADistance(inputF = file.path(guideD, paste0(ovlName, "_aln_stat.xlsx")),
-                  guide1 = refSeq1, guide2 = refSeq2)
-  
-  # ADD CUMULATIVE SCORE
-  getCumulScore(inputF = file.path(guideD, paste0(ovlName, "_aln_stat.xlsx")))
-  
   # GENERATE RANDOM SEQUENCE BED
   randomD <- file.path(sampleD, "results", "random")
   #dir.create(randomD, showWarnings = FALSE)
@@ -79,7 +72,7 @@ runPipelineDoubleNickaseOverlap <- function()
   
   ################     DEFINE GROUPS    ################ 
   print("################     DEFINE GROUPS    ################ ")
-  assignGroupsDoubleNickase(file.path(guideD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
+  assignGroups2(file.path(guideD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
                             file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
                             otsBed,
                             pv.cutoff)
@@ -162,63 +155,63 @@ runPipelineDoubleNickaseOverlap <- function()
   print("############    CHR PLOT (CIRCLIZE)    ############")
   ################     CHR PLOT (CIRCLIZE)    ################ 
   
-    tryCatch(
-    	{
-  	circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                        zoom.size = 25000, label = FALSE, 
-                        PV.cutoff = NULL,
-                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                        showNBS = TRUE,
-                        gene.bed = NULL, ots.bed = otsBed, 
-                        realigned = TRUE,
-                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
-                        species = circos.sp)
+  tryCatch(
+    {
+      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                            zoom.size = 25000, label = FALSE, 
+                            PV.cutoff = NULL,
+                            bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                            showNBS = TRUE,
+                            gene.bed = NULL, ots.bed = otsBed, 
+                            realigned = TRUE,
+                            outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                            species = circos.sp)
     },
     error = function(e){
-	print("no sites on defined otsBed, use max gRNA score")
-		
-   circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                        zoom.size = 25000, label = FALSE, 
-                        PV.cutoff = NULL,
-                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                        showNBS = TRUE,
-                        gene.bed = NULL, ots.bed = NULL, 
-                        realigned = FALSE,
-                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
-                        species = circos.sp)
-		    }
-	)
+      print("no sites on defined otsBed, use max gRNA score")
+      
+      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                            zoom.size = 25000, label = FALSE, 
+                            PV.cutoff = NULL,
+                            bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                            showNBS = TRUE,
+                            gene.bed = NULL, ots.bed = NULL, 
+                            realigned = FALSE,
+                            outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                            species = circos.sp)
+    }
+  )
   
-    tryCatch(
-    	{
-  circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                        zoom.size = 25000, label = FALSE, 
-                        PV.cutoff = NULL,
-                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                        showNBS = FALSE,
-                        gene.bed = NULL, ots.bed = otsBed, 
-                        realigned = TRUE,
-                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
-                        species = circos.sp)
+  tryCatch(
+    {
+      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                            zoom.size = 25000, label = FALSE, 
+                            PV.cutoff = NULL,
+                            bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                            showNBS = FALSE,
+                            gene.bed = NULL, ots.bed = otsBed, 
+                            realigned = TRUE,
+                            outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                            species = circos.sp)
     },
     error = function(e){
-	print("no sites on defined otsBed, use max gRNA score")
-		
-  circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
-                        zoom.size = 25000, label = FALSE, 
-                        PV.cutoff = NULL,
-                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                        showNBS = FALSE,
-                        gene.bed = NULL, ots.bed = NULL, 
-                        realigned = FALSE,
-                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
-                        species = circos.sp)
-		    }
-	)
+      print("no sites on defined otsBed, use max gRNA score")
+      
+      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+                            zoom.size = 25000, label = FALSE, 
+                            PV.cutoff = NULL,
+                            bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                            showNBS = FALSE,
+                            gene.bed = NULL, ots.bed = NULL, 
+                            realigned = FALSE,
+                            outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                            species = circos.sp)
+    }
+  )
   
-
   
-
+  
+  
   
   ##########################################################################################
   ############                           HITS BARPLOT                           ############

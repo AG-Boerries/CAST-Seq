@@ -52,7 +52,9 @@ option_list = list(
     make_option(c("--random"), type="integer", default=10000, 
               help="number of random sequences to generate [default= %default]", metavar="integer"),        
     make_option(c("--width"), type="integer", default=250, 
-              help="distance to extend the putative sites [default= %default]", metavar="integer"),            
+              help="distance to extend the putative sites [default= %default]", metavar="integer"),       
+	make_option(c("--bpOrient"), type="character", default="forward", 
+              help="Orientation of the bait primer (forward or reverse) [default= %default]", metavar="character"),            
     make_option(c("--distCutoff"), type="integer", default=1500, 
               help="distance to merge hits together [default= %default]", metavar="integer"),          
     make_option(c("--pvCutoff"), type="numeric", default=0.05, 
@@ -191,9 +193,12 @@ if(is.null(opt$fastqD)){
 
 # SET GUIDE SEQ
 
-if(opt$pipeline == "talen" | opt$pipeline == "talen_overlap" | opt$pipeline == "double_nickase" | opt$pipeline == "double_nickase_overlap"){
+if(opt$pipeline == "talen" | opt$pipeline == "talen_overlap"){
 	refSeq.left <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaL))))
 	refSeq.right <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaR))))
+}else if(opt$pipeline %in% c("crispr2", "crispr2_overlap", "double_nickase", "double_nickase_overlap")){
+  refSeq1 <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaL))))
+  refSeq2 <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grnaR))))
 }else{
 	refSeq <- toupper(as.character(readDNAStringSet(file.path(dataD, opt$grna))))
 }
@@ -226,6 +231,9 @@ w = opt$width
 
 # SET DISTANCE CUTOFF (FOR HITS)
 distance.cutoff <- opt$distCutoff
+
+# BAIT PRIMER ORIENTATION
+bpOrient <- opt$bpOrient
 
 # SET PVALUE CUTOFF
 #filtName <- ""
@@ -365,6 +373,7 @@ if(opt$species == "hg"){
 ################                     SOURCE SCRIPTS                  #####################
 ##########################################################################################
 
+
 source(file.path(scriptD, "fastq_aln.R"))
 source(file.path(scriptD, "bed2sequence.R"))
 source(file.path(scriptD, "bedTools_fct.R"))
@@ -404,12 +413,20 @@ if(opt$pipeline == "talen_overlap"){
 
 if(opt$pipeline == "double_nickase"){
   source(file.path(scriptD, "pipelineDoubleNickase.R"))
-  source(file.path(scriptD, "guide_alignmentDual.R"))
+  #source(file.path(scriptD, "guide_alignmentDual.R"))
 }
 
 if(opt$pipeline == "double_nickase_overlap"){
   source(file.path(scriptD, "pipelineDoubleNickase_overlap.R"))
-  source(file.path(scriptD, "guide_alignmentDual.R"))
+  #source(file.path(scriptD, "guide_alignmentDual.R"))
+}
+
+if(opt$pipeline == "crispr2"){
+  source(file.path(scriptD, "pipeline_crispr2.R"))
+}
+
+if(opt$pipeline == "crispr2_overlap"){
+  source(file.path(scriptD, "pipeline_crispr2_overlap.R"))
 }
 
 ################     SET PYTHON FOR LCS    ################ 
@@ -445,6 +462,12 @@ if(opt$pipeline == "crispr"){
 }else if(opt$pipeline == "double_nickase_overlap"){
   print("START DOUBLE NICKASE OVERLAP PIPELINE")
   runPipelineDoubleNickaseOverlap()
+}else if(opt$pipeline == "crispr2"){
+  print("START CRISPR 2 gRNAs PIPELINE")
+  runPipeline_crispr2()
+}else if(opt$pipeline == "crispr2_overlap"){
+  print("START CRISPR 2 gRNAs OVERLAP PIPELINE")
+  runPipeline_crispr2_overlap()
 }else{
   print_help(opt_parser)
   stop("wrong pipeline name. Must be crispr, crispr_2ot, crispr_overlap, talen or talen_overlap, double_nickase or double_nickase_overlap", call.=FALSE)

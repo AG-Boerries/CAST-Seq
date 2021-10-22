@@ -52,14 +52,15 @@ getDeltaShuffle(gsub(".bed$", "_delta.bed", controlBed), nb = 10, distance = dis
 getHits(gsub(".bed$", "_delta.bed", sampleBed), distance.cutoff)
 getHits(gsub(".bed$", "_delta.bed", controlBed), distance.cutoff)
 
-################     TEST VS. CONTROL ENRICHMENT    ################
-print("################     TEST VS. CONTROL ENRICHMENT    ################")
-# USE RAW FASTQ FILE !!!!!!!!!
-#nbReads.sample <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(sampleName, "_R2_001.fastq.gz"))))
-#nbReads.control <- as.numeric(nbReadFastqgz(file.path(dataD, "fastq", paste0(controlName, "_R2_001.fastq.gz"))))
+################     CALCULATE LIBRARY SIZE    ################
+print("################     CALCULATE LIBRARY SIZE    ################")
 
+# USE RAW FASTQ FILE !!!!!!!!!
 nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz"))))
 nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz"))))
+
+################     TEST VS. CONTROL ENRICHMENT    ################
+print("################     TEST VS. CONTROL ENRICHMENT    ################")
 
 doEnrichment(gsub(".bed$", "_hits.bed", sampleBed), gsub(".bed$", "_hits.bed", controlBed),
 			 nbReads.sample, nbReads.control, w, myGenome.size)
