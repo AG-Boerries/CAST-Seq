@@ -39,15 +39,25 @@ nbReadBED <- function(inFile){
 
 countReads <- function(fastqFolder, sampleFolder, testSample, utSample){
   # R1
-  r1 <- as.numeric(nbReadFastqgz(file.path(fastqFolder, paste0(testSample, "_R1_001.fastq.gz"))))
-  r1.UT <- as.numeric(nbReadFastqgz(file.path(fastqFolder, paste0(utSample, "_R1_001.fastq.gz"))))
+  f1 <- file.path(fastqFolder, paste0(testSample, "_R1_001.fastq.gz"))
+  if(!file.exists(f1)) f1 <- file.path(fastqFolder, paste0(testSample, "_1.fq.gz"))
+  f1.UT <- file.path(fastqFolder, paste0(utSample, "_R1_001.fastq.gz"))
+  if(!file.exists(f1.UT)) f1.UT <- file.path(fastqFolder, paste0(utSample, "_1.fq.gz"))
+  
+  r1 <- as.numeric(nbReadFastqgz(f1))
+  r1.UT <- as.numeric(nbReadFastqgz(f1.UT))
   
   r1.pc <- 100
   r1.UT.pc <- 100
   
   # R2
-  r2 <- as.numeric(nbReadFastqgz(file.path(fastqFolder, paste0(testSample, "_R2_001.fastq.gz"))))
-  r2.UT <- as.numeric(nbReadFastqgz(file.path(fastqFolder, paste0(utSample, "_R2_001.fastq.gz"))))
+  f2 <- file.path(fastqFolder, paste0(testSample, "_R2_001.fastq.gz"))
+  if(!file.exists(f2)) f2 <- file.path(fastqFolder, paste0(testSample, "_2.fq.gz"))
+  f2.UT <- file.path(fastqFolder, paste0(utSample, "_R2_001.fastq.gz"))
+  if(!file.exists(f2.UT)) f2.UT <- file.path(fastqFolder, paste0(utSample, "_2.fq.gz"))
+  
+  r2 <- as.numeric(nbReadFastqgz(f2))
+  r2.UT <- as.numeric(nbReadFastqgz(f2.UT))
   
   r2.pc <- 100
   r2.UT.pc <- 100

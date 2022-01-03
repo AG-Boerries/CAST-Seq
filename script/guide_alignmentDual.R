@@ -621,6 +621,7 @@ getGuideAlignmentDual <- function(inputF, guideLeft, guideRight, alnFolder, gnm 
     alnStart.rel <- alnStart - middleCoord
     alnStart.abs <- alnStart + readMat$start
     
+
     # STATISTIC
     statList <- lapply(alnList[[refSeqFolder]], getAlnStat)
     statMat <- do.call(rbind, statList)

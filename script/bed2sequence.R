@@ -7,16 +7,6 @@
 ###                                      ###
 ############################################
 
-
-bed2sequenceOLD <- function(bedMat)
-{
-	sqList <- apply(bedMat, 1, function(i)
-		getSeq(Hsapiens, i[1], as.integer(i[2]), as.integer(i[3]), as.character = TRUE)
-		#getSeq(Hsapiens, i[1], as.integer(i[2]), as.integer(i[3]),as.BStringViews=TRUE)
-		)
-	return(sqList)
-}
-
 bed2sequence <- function(bedMat, g=BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
 {
 	sqList <- mclapply(1:nrow(bedMat), function(i)

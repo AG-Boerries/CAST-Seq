@@ -64,14 +64,12 @@ do
 
 	pair1=${fastqDir}/${fname}_R1_001.fastq.gz
 	pair2=${fastqDir}/${fname}_R2_001.fastq.gz
+	
+	# Novogene fastq
+	[ ! -f ${pair1} ] && pair1=${fastqDir}/${fname}_1.fq.gz
+	[ ! -f ${pair2} ] && pair2=${fastqDir}/${fname}_2.fq.gz
 
-	############## Quality control fastq files #####################
-	#fastqc -o ${outDir} --noextract ${pair1}
-	#fastqc -o ${outDir} --noextract ${pair2}
-
-	#cp ${pair2} ${outDir}${fname}_merged.fastq.gz
-
-	################# PEAR PAIRING ###################
+	################# PEAR PAIRING DEPRECATED ###################
 	#echo "START PEAR PAIRING" > ${logFile}
 
 	# PEAR
@@ -92,8 +90,8 @@ do
 	
 	################# BBMERGE PAIRING ###################
 	echo "START BBMERGE PAIRING" > ${logFile}
-	bbmerge.sh -Xmx4g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
-	bbmerge.sh -Xmx4g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
+	bbmerge.sh -Xmx16g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
+	bbmerge.sh -Xmx16g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
 	
 	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}.assembled.fastq.gz outu=${outDir}${fname}.unassembled.R2.fastq outu2=${outDir}${fname}.unassembled.R1.fastq adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa ecct extend2=20 iterations=5
 	#bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}_merged.fastq.gz outu=${outDir}${fname}_UNmerged_R2.fastq.gz outu2=${outDir}${fname}_UNmerged_R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
@@ -136,7 +134,7 @@ do
 	############# FILTERING ###################
 	echo "START FILTERING" >> ${logFile}
 	# filter 1: find reads that contain the CCR5 sequence before the cut site
-	bbduk.sh -Xmx4g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
+	bbduk.sh -Xmx16g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
   #mv ${outDir}${fname}_pos.fastq.gz ${outDir}${fname}_pos.SAVE.fastq.gz
   #mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
 
@@ -145,7 +143,7 @@ do
 
 	# filter 2: eliminate CCR2 aspecifics
 	#mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
-	bbduk.sh -Xmx4g in=${outDir}${fname}_pos.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
+	bbduk.sh -Xmx16g in=${outDir}${fname}_pos.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
 
 	echo "_Filt2.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -157,13 +155,13 @@ do
 	echo "START TRIMMING" >> ${logFile}
 	#trimming of the linker and eliminate short reads <20+ (ml=20)
 	#rcomp = t
-	bbduk.sh -Xmx4g in=${outDir}${fname}_Filt2.fastq.gz ref=${linker} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=f
+	bbduk.sh -Xmx16g in=${outDir}${fname}_Filt2.fastq.gz ref=${linker} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=f
 
 	echo "_trim1.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 	# trimming of the adapters
-	bbduk.sh -Xmx4g in=${outDir}${fname}_trim1.fastq.gz ref=${adapters} out=${outDir}${fname}_trim2.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20
+	bbduk.sh -Xmx16g in=${outDir}${fname}_trim1.fastq.gz ref=${adapters} out=${outDir}${fname}_trim2.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20
 
 	echo "_trim2.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -173,7 +171,7 @@ do
 	echo "START CRISPRESSO" >> ${logFile}
 
 	# filter 3: find reads that not contain the CCR5 sequence after the cut site
-	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${neg} outm=${outDir}${fname}_Filt3_pos.fastq.gz outu=${outDir}${fname}_Filt3_neg.fastq.gz k=25 mm=f hdist=3 edist=2 ow=t rcomp=f
+	bbduk.sh -Xmx16g in=${outDir}${fname}_trim2.fastq.gz ref=${neg} outm=${outDir}${fname}_Filt3_pos.fastq.gz outu=${outDir}${fname}_Filt3_neg.fastq.gz k=25 mm=f hdist=3 edist=2 ow=t rcomp=f
 
 	# run crispresso with fastq.gz
 	#source activate py27
@@ -181,7 +179,7 @@ do
 	#source deactivate
 
 	#trimming of the CCR5 sequence before the cut site
-	bbduk.sh -Xmx4g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30
+	bbduk.sh -Xmx16g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30
 
 	echo "_trim3.fastq.gz: " >> ${logFile}
 	echo $(gzcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
@@ -189,19 +187,22 @@ do
 	######### FINAL filter ############ 
 	echo "START FINAL FILTER" >> ${logFile}
 	# create the separate file for the head to head CCR5 sequences
-	bbduk.sh -Xmx4g in=${outDir}${fname}_trim3.fastq.gz ref=${hth} outm=${outDir}${fname}_Headtoheadtrimmed.fastq.gz outu=${outDir}${fname}_final.fastq.gz k=20 mm=f edist=2 ow=t rcomp=f
+	bbduk.sh -Xmx16g in=${outDir}${fname}_trim3.fastq.gz ref=${hth} outm=${outDir}${fname}_Headtoheadtrimmed.fastq.gz outu=${outDir}${fname}_final.fastq.gz k=20 mm=f edist=2 ow=t rcomp=f
 
 
 	############## check quality #########################
-	fastqc -o ${outDir} --noextract ${pair1}
-	fastqc -o ${outDir} --noextract ${pair2}
-	fastqc -o ${outDir} --noextract ${outDir}${fname}_merged.fastq.gz
+	echo $PATH
+	which fastqc
+	fastqc -version
+	fastqc -t ${CPU} -o ${outDir} --noextract ${pair1}
+	fastqc -t ${CPU} -o ${outDir} --noextract ${pair2}
+	fastqc -t ${CPU} -o ${outDir} --noextract ${outDir}${fname}_merged.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_merged_filt.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_pos.fastq
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_Filt2.fastq
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_trim1.fastq
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_trim2.fastq
-	fastqc -o ${outDir} --noextract ${outDir}${fname}_trim3.fastq.gz
+	fastqc -t ${CPU} -o ${outDir} --noextract ${outDir}${fname}_trim3.fastq.gz
 	#fastqc -o ${outDir} --noextract ${outDir}${fname}_final.fastq
 
 
@@ -245,8 +246,6 @@ do
 	bedtools shuffle -i ${bedTMP} -g ${chrSize} > ${shuffleBedTMP}
 	bedtools getfasta -fi ${genomeFasta} -bed ${shuffleBedTMP} -fo ${outDir}${fname}_lowQ.shuffle.fa
 	
-
-
 done
 
 

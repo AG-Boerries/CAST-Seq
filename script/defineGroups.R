@@ -809,7 +809,7 @@ groupSummary <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 
 hitsBarplot <- function(inputF, pv = NULL, top = NULL, showNBS = TRUE, log = TRUE, outName = NULL){
   realM <- read.xlsx(inputF, sheet = 1)
-  if(!is.null(pv)) realM <- realM[realM$adj.pvalue < pv, ]
+  if(!is.null(pv)) realM <- realM[realM$adj.pvalue < pv | !is.na(realM$is.ON), ]
   if(!showNBS) realM <- realM[realM$group != "NBS", ]
   if(!is.null(top)){
     realM <- realM[order(-realM$hits), ]

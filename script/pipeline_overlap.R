@@ -27,7 +27,10 @@ print(ovlName)
   repNames.split <- strsplit(repNames, split = ",")[[1]]
   
   siteFiles <- paste0(replicates.split, "_w", w, "_FINAL.xlsx")
-  siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
+  #siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
+  siteFiles <- sapply(1:length(siteFiles), function(i) list.files(repD.split[i], pattern = siteFiles[i], recursive=TRUE, full.names = TRUE))
+  siteFiles <- lapply(siteFiles, function(i) i[grepl("\\/results\\/", i)])
+  siteFiles <- unlist(siteFiles)
   names(siteFiles) <- repNames.split
   
   print(siteFiles)
@@ -155,9 +158,9 @@ finalizeOverlap(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xls
 
 
 ################     CHR PLOT    ################ 
-chrPlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+chrPlot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
 	file.path(ovlD, paste0(ovlName, "_aln_chrPlot.pdf")), hits = NULL, score = NULL, pv = NULL)
-chrPlotAside(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+chrPlotAside(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
 	file.path(ovlD, paste0(ovlName, "_aln_chrPlot")), hits = NULL, score = NULL, pv = NULL)
 
 ##########################################################################################
@@ -242,6 +245,7 @@ if(rmTMP){
   mypattern <- c("_aln_stat_FLANK_GROUP_GENES.xlsx$", "_aln_stat_FLANK_GROUP.xlsx$",
                  "_aln_stat_FLANK.xlsx$", "_aln_stat.xlsx$")
   torm <- unlist(lapply(mypattern, function(mp) list.files(ovlD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+  torm <- torm[file.exists(torm)]
   file.remove(torm)
 }
 

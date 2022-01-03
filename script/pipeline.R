@@ -62,8 +62,19 @@ getHits(gsub(".bed$", "_delta.bed", controlBed), distance.cutoff)
 print("################     CALCULATE LIBRARY SIZE    ################")
 
 # USE RAW FASTQ FILE !!!!!!!!!
-nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz"))))
-nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz"))))
+if(file.exists(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz")))){
+  nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_R2_001.fastq.gz"))))
+}else{
+  nbReads.sample <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(sampleName, "_2.fq.gz"))))
+}
+if(nbReads.sample == 0) print(paste0("NO reads in ", sampleName))
+
+if(file.exists(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz")))){
+  nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_R2_001.fastq.gz"))))
+}else{
+  nbReads.control <- as.numeric(nbReadFastqgz(file.path(fastqD, paste0(controlName, "_2.fq.gz"))))
+}
+if(nbReads.control == 0) print(paste0("NO reads in ", controlName))
 
 ################     TEST VS. CONTROL ENRICHMENT    ################
 print("################     TEST VS. CONTROL ENRICHMENT    ################")
@@ -431,12 +442,12 @@ finalize(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_G
 if(filtName != ""){	
 ################     CHR PLOT    ################ 
 print("################     CHR PLOT    ################")
-chrPlot(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+chrPlot(file.path(guideD, paste0(controlName, "_w", w, "_FINAL.xlsx")),
 	file.path(guideD, paste0(controlName, "_w", w, "_aln_", filtName, "_chrPlot.pdf")),
 	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
 	
 		
-chrPlotAside(file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+chrPlotAside(file.path(guideD, paste0(controlName, "_w", w, "_FINAL.xlsx")),
 	file.path(guideD, paste0(controlName, "_w", w, "_aln_", filtName, "_chrPlot")),
 	hits = hits.cutoff, score = score.cutoff, pv = pv.cutoff)
 }
@@ -469,20 +480,20 @@ if(saveReads){
 	
 	# Sample
 	dir.create(file.path(guideD, paste0(sampleName, "_reads")), showWarnings = FALSE)
-	getReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	getReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
 			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_AlignmentSort.bam")),
 			 outputDir = file.path(guideD, paste0(sampleName, "_reads"))
 			 )
-	addNbReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	addNbReads(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
 			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(sampleName, "_AlignmentSort.bam")))		 
 	
 	# Control
 	dir.create(file.path(guideD, paste0(controlName, "_reads")), showWarnings = FALSE)
-	getReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+	getReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_FINAL.xlsx")),
 			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_AlignmentSort.bam")),
 			 outputDir = file.path(guideD, paste0(controlName, "_reads"))
 			 )	
- 	addNbReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+ 	addNbReads(inputFile = file.path(guideD, paste0(controlName, "_w", w, "_FINAL.xlsx")),
 			 bamFile = file.path(sampleD, "results/fastq_aln", paste0(controlName, "_AlignmentSort.bam")))	
 }
 
@@ -497,7 +508,7 @@ if(filtName != ""){
   
   tryCatch(
     {
-    circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+    circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
                    zoom.size = 25000, label = FALSE, 
                    PV.cutoff = pv.cutoff,
                    bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -509,8 +520,9 @@ if(filtName != ""){
                    
     },
     error = function(e){
+        print(read.delim(otsBed, header = FALSE))
 		print("no sites on defined otsBed, use max gRNA score")
-        circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+        circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
         				zoom.size = 25000, label = FALSE, 
         				PV.cutoff = pv.cutoff,
         				bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -524,7 +536,7 @@ if(filtName != ""){
   
   tryCatch(
     {
-  	circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  	circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
                    zoom.size = 25000, label = FALSE, 
                    PV.cutoff = pv.cutoff,
                    bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -536,8 +548,9 @@ if(filtName != ""){
                    
     },
     error = function(e){
+        print(read.delim(otsBed, header = FALSE))
 		print("no sites on defined otsBed, use max gRNA score")
-		circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+		circlizePipeline(siteFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
                    zoom.size = 25000, label = FALSE, 
                    PV.cutoff = pv.cutoff,
                    bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -588,6 +601,17 @@ ONreadout(bamFile = file.path(sampleD, "results", "fastq_aln", paste0(sampleName
           sampleName = sampleName,
           outDir = guideD)
 
+##########################################################################################
+############                           COVERAGE PLOT                          ############
+##########################################################################################
+print("############    COVERAGE PLOT    ############")
+
+dir.create(file.path(guideD, "coverage"), showWarnings = FALSE)
+
+coverage_single(inputFile = file.path(guideD, paste0(sampleName, "_w", w, "_FINAL.xlsx")),
+                bamFile = file.path(sampleD, "results", "fastq_aln", paste0(sampleName, "_AlignmentSort.bam")),
+                window.size = 100,
+                outDir = file.path(guideD, "coverage"))
 
 ##########################################################################################
 ############                        REMOVE TMP FILES                          ############
@@ -601,11 +625,13 @@ if(rmTMP){
 	"_assembled.fastq.gz$", "_unassembled.R1.fastq.gz$", "_unassembled.R2.fastq.gz", 
 	".assembled.fastq.gz$", ".discarded.fastq$")
 	torm <- unlist(lapply(mypattern, function(mp) list.files(sampleD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+	torm <- torm[file.exists(torm)]
 	file.remove(torm)
 	
 	mypattern <- c("_aln_stat_FLANK_GROUP_GENES.xlsx$", "_aln_stat_FLANK_GROUP.xlsx$",
 	               "_aln_stat_FLANK.xlsx$", "_aln_stat.xlsx$")
 	torm <- unlist(lapply(mypattern, function(mp) list.files(guideD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+	torm <- torm[file.exists(torm)]
 	file.remove(torm)
 }
 

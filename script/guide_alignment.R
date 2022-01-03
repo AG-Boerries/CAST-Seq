@@ -248,8 +248,24 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	# RELATIVE COORDINATES
 	middleCoord <- floor((readMat$end - readMat$start) / 2)
 	middleCoord.abs <- readMat$start + middleCoord
-	alnStart.rel <- alnStart - middleCoord
-	alnStart.abs <- alnStart + readMat$start
+	#alnStart.rel <- alnStart - middleCoord
+	#alnStart.abs <- alnStart + readMat$start
+	
+	alnStart.rel <- sapply(1:length(alnStart), function(x){
+	  if(refSeqList[x] == "norm."){
+	    return(alnStart[x] - middleCoord[x])
+	  }else{
+	    return(middleCoord[x] - alnStart[x])
+	  }
+	})
+	
+	alnStart.abs <- sapply(1:length(alnStart), function(x){
+	  if(refSeqList[x] == "norm."){
+	    return(alnStart[x] + readMat$start[x])
+	  }else{
+	    return(readMat$end[x] - alnStart[x])
+	  }
+	})
 	
 	# STATISTIC
 	statList <- lapply(alnList, getAlnStat)
@@ -402,8 +418,25 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     # RELATIVE COORDINATES
     middleCoord <- floor((readMat$end - readMat$start) / 2)
     middleCoord.abs <- readMat$start + middleCoord
-    alnStart.rel <- alnStart - middleCoord
-    alnStart.abs <- alnStart + readMat$start
+    #alnStart.rel <- alnStart - middleCoord
+    #alnStart.abs <- alnStart + readMat$start
+    
+    alnStart.rel <- sapply(1:length(alnStart), function(x){
+      if(refSeqList[x] == "norm."){
+        return(alnStart[x] - middleCoord[x])
+      }else{
+        return(middleCoord[x] - alnStart[x])
+      }
+    })
+    
+    alnStart.abs <- sapply(1:length(alnStart), function(x){
+      if(refSeqList[x] == "norm."){
+        return(alnStart[x] + readMat$start[x])
+      }else{
+        return(readMat$end[x] - alnStart[x])
+      }
+    })
+    
     
     # STATISTIC
     statList <- lapply(alnList, getAlnStat)

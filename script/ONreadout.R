@@ -224,14 +224,384 @@ ONreadout <- function(bamFile, otsFile, gRNA.orientation, window.size = 5000, sa
   unlink(dir1, recursive = T)
 }
 
+coverage_single <- function(inputFile, bamFile, window.size = 100, outDir){
+  # LOAD READMAT
+  readMat <- read.xlsx(inputFile, sheet = 1)  
+  readMat <- readMat[readMat$hits > 1,]
+  
+  if(nrow(readMat)==0){
+    print(paste0("no site with hits > 1 in ", inputFile))
+    return(NA)
+  }
+  
+  mclapply(1:nrow(readMat), function(i){
+    subDir <- readMat$group[i]
+    dir.create(file.path(outDir, subDir), recursive = TRUE, showWarnings = FALSE)
+    
+    # CREATE SITE BED
+    ots <- data.frame(V1 = readMat$chromosome[i],
+                      V2 = readMat$start[i],
+                      V3 = readMat$end[i],
+                      V4 = readMat$SYMBOL[i],
+                      V5 = 1000,
+                      V6 = "*")
+    ots.title <- paste0(ots$V1, ": ", ots$V2, " - ", ots$V3, "; ", ots$V4)
+    ots.name <- paste0(ots$V1, "_", ots$V2, "_", ots$V3, "_", ots$V4)
+    
+    ots.site <- ots$V2 + floor((ots$V3 - ots$V2)/2)
+    
+    dir.create(dir1 <- file.path(tempdir(), paste0("cleavageDir", i)))
+    
+    # extend ots
+    ots$V2 <- ots$V2 - window.size
+    ots$V3 <- ots$V3 + window.size
+    ots.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    write.table(ots, ots.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    # calculate coverage per base
+    cov.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tmp, opt.string="-bed -d")
+    cov <- read.delim(cov.tmp, header = FALSE)
+    
+    # calculate total coverage
+    cov.tot.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tot.tmp, opt.string="-bed")
+    cov.tot <- read.delim(cov.tot.tmp, header = FALSE)
+    cov.tot <- cov.tot$V7
+    
+    # calculate coverage per bins
+    bins <- chunkBed(ots$V2, ots$V3, 100)
+    bins <- data.frame(ots$V1,
+                       bins,
+                       paste0("bin_", seq(1:nrow(bins))),
+                       1000,
+                       "*")
+    colnames(bins) <- colnames(ots)
+    bins.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    write.table(bins, bins.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    cov.bin.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = bins.tmp, outFile = cov.bin.tmp, opt.string="-bed")
+    cov.bin <- read.delim(cov.bin.tmp, header = FALSE)
+    
+    cov.bin.df <- data.frame(cov.bin[, c(1:4, 7)],
+                             SYMBOL = readMat$SYMBOL[i])
+    colnames(cov.bin.df) <- c("chr", "start", "end", "bin", "TOT", "SYMBOL")
+    write.xlsx(cov.bin.df, file = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.xlsx")),
+               row.names = FALSE, overwrite = TRUE)
+    
+    ###############
+    # plot coverage
+    ggmat <- data.frame(CHR = cov$V1,
+                        POSITION = cov$V2 + cov$V7,
+                        COV = cov$V8)
+    
+    # COVERAGE
+    p <- ggplot(ggmat, aes(x= POSITION))
+    p <- p + geom_line(aes(y=COV), size = 1, alpha = 0.75)
+    
+    p <- p + geom_vline(xintercept = readMat$start[i], 
+                        color = "orangered", size=1)
+    p <- p + geom_vline(xintercept = readMat$end[i], 
+                        color = "orangered", size=1)
+    
+    if(readMat$group[i] != "NBS"){
+      p <- p + geom_vline(xintercept = readMat$aln.start.abs[i], linetype="dashed", 
+                          color = "limegreen", size=1.5)
+    }
+    
+    if(max(ggmat$COV >= 10000)){
+      p <- p + scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      )
+      p <- p + annotation_logticks() 
+    }
+    
+    p <- p + theme_bw(base_size = 18) + theme(panel.grid.minor = element_blank())
+    p <- p + xlab("") + ylab("read coverage")
+    p <- p + theme(legend.position = "bottom", plot.title = element_text(size = 18, face = "bold"))
+    p <- p + ggtitle(ots.title)
+    ggsave(plot = p, filename = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.pdf")), 
+           width = 6, height = 4)
+    
+    # Delete tmp dir
+    unlink(dir1, recursive = T)
+    
+    
+  }, mc.cores = NBCPU)
+}
 
 
+coverage_double <- function(inputFile, bamFile, window.size = 100, outDir){
+    # LOAD READMAT
+    readMat <- read.xlsx(inputFile, sheet = 1)  
+    readMat <- readMat[readMat$hits > 1,]
+    
+    if(nrow(readMat)==0){
+      print(paste0("no site with hits > 1 in ", inputFile))
+      return(NA)
+    }
+    
+    mclapply(1:nrow(readMat), function(i){
+      subDir <- readMat$group[i]
+      dir.create(file.path(outDir, subDir), recursive = TRUE, showWarnings = FALSE)
+      
+      # CREATE SITE BED
+      ots <- data.frame(V1 = readMat$chromosome[i],
+                        V2 = readMat$start[i],
+                        V3 = readMat$end[i],
+                        V4 = readMat$SYMBOL[i],
+                        V5 = 1000,
+                        V6 = "*")
+      ots.title <- paste0(ots$V1, ": ", ots$V2, " - ", ots$V3, "; ", ots$V4)
+      ots.name <- paste0(ots$V1, "_", ots$V2, "_", ots$V3, "_", ots$V4)
+      
+      ots.site <- ots$V2 + floor((ots$V3 - ots$V2)/2)
+      
+      dir.create(dir1 <- file.path(tempdir(), paste0("cleavageDir", i)))
+      
+      # extend ots
+      ots$V2 <- ots$V2 - window.size
+      ots$V3 <- ots$V3 + window.size
+      ots.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+      write.table(ots, ots.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      # calculate coverage per base
+      cov.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+      bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tmp, opt.string="-bed -d")
+      cov <- read.delim(cov.tmp, header = FALSE)
+      
+      # calculate total coverage
+      cov.tot.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+      bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tot.tmp, opt.string="-bed")
+      cov.tot <- read.delim(cov.tot.tmp, header = FALSE)
+      cov.tot <- cov.tot$V7
+      
+      # calculate coverage per bins
+      bins <- chunkBed(ots$V2, ots$V3, 100)
+      bins <- data.frame(ots$V1,
+                         bins,
+                         paste0("bin_", seq(1:nrow(bins))),
+                         1000,
+                         "*")
+      colnames(bins) <- colnames(ots)
+      bins.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+      write.table(bins, bins.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+      
+      cov.bin.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+      bamCoverage(bam = bamFile, bed = bins.tmp, outFile = cov.bin.tmp, opt.string="-bed")
+      cov.bin <- read.delim(cov.bin.tmp, header = FALSE)
+      
+      cov.bin.df <- data.frame(cov.bin[, c(1:4, 7)],
+                               SYMBOL = readMat$SYMBOL[i])
+      colnames(cov.bin.df) <- c("chr", "start", "end", "bin", "TOT", "SYMBOL")
+      write.xlsx(cov.bin.df, file = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.xlsx")),
+                 row.names = FALSE, overwrite = TRUE)
+      
+      ###############
+      # plot coverage
+      ggmat <- data.frame(CHR = cov$V1,
+                          POSITION = cov$V2 + cov$V7,
+                          COV = cov$V8)
+      
+      # COVERAGE
+      p <- ggplot(ggmat, aes(x= POSITION))
+      p <- p + geom_line(aes(y=COV), size = 1, alpha = 0.75)
+      
+      p <- p + geom_vline(xintercept = readMat$start[i], 
+                          color = "orangered", size=1)
+      p <- p + geom_vline(xintercept = readMat$end[i], 
+                          color = "orangered", size=1)
+      
+      if(readMat$group[i] != "NBS"){
+        p <- p + geom_vline(xintercept = readMat$aln.start.abs.gRNA1[i], linetype="dashed", 
+                            color = "limegreen", alpha = 0.5, size=1.5)
+        p <- p + geom_vline(xintercept = readMat$aln.start.abs.gRNA2[i], linetype="dashed", 
+                            color = "mediumpurple", alpha = 0.5, size=1.5)
+      }
+      
+      if(max(ggmat$COV >= 10000)){
+        p <- p + scale_y_log10(
+          breaks = scales::trans_breaks("log10", function(x) 10^x),
+          labels = scales::trans_format("log10", scales::math_format(10^.x))
+        )
+        p <- p + annotation_logticks() 
+      }
+      
+      p <- p + theme_bw(base_size = 18) + theme(panel.grid.minor = element_blank())
+      p <- p + xlab("") + ylab("read coverage")
+      p <- p + theme(legend.position = "bottom", plot.title = element_text(size = 18, face = "bold"))
+      p <- p + ggtitle(ots.title)
+      ggsave(plot = p, filename = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.pdf")), 
+             width = 6, height = 4)
+      
+      # Delete tmp dir
+      unlink(dir1, recursive = T)
+      
+      
+    }, mc.cores = NBCPU)
+}
+
+coverage_talen <- function(inputFile, bamFile, window.size = 100, outDir){
+  # LOAD READMAT
+  readMat <- read.xlsx(inputFile, sheet = 1)  
+  readMat <- readMat[readMat$hits > 1,]
+  
+  if(nrow(readMat)==0){
+    print(paste0("no site with hits > 1 in ", inputFile))
+    return(NA)
+  }
+  
+  mclapply(1:nrow(readMat), function(i){
+    subDir <- readMat$group[i]
+    dir.create(file.path(outDir, subDir), recursive = TRUE, showWarnings = FALSE)
+    
+    # CREATE SITE BED
+    ots <- data.frame(V1 = readMat$chromosome[i],
+                      V2 = readMat$start[i],
+                      V3 = readMat$end[i],
+                      V4 = readMat$SYMBOL[i],
+                      V5 = 1000,
+                      V6 = "*")
+    ots.title <- paste0(ots$V1, ": ", ots$V2, " - ", ots$V3, "; ", ots$V4)
+    ots.name <- paste0(ots$V1, "_", ots$V2, "_", ots$V3, "_", ots$V4)
+    
+    ots.site <- ots$V2 + floor((ots$V3 - ots$V2)/2)
+    
+    dir.create(dir1 <- file.path(tempdir(), paste0("cleavageDir", i)))
+    
+    # extend ots
+    ots$V2 <- ots$V2 - window.size
+    ots$V3 <- ots$V3 + window.size
+    ots.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    write.table(ots, ots.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    # calculate coverage per base
+    cov.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tmp, opt.string="-bed -d")
+    cov <- read.delim(cov.tmp, header = FALSE)
+    
+    # calculate total coverage
+    cov.tot.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = ots.tmp, outFile = cov.tot.tmp, opt.string="-bed")
+    cov.tot <- read.delim(cov.tot.tmp, header = FALSE)
+    cov.tot <- cov.tot$V7
+    
+    # calculate coverage per bins
+    bins <- chunkBed(ots$V2, ots$V3, 100)
+    bins <- data.frame(ots$V1,
+                       bins,
+                       paste0("bin_", seq(1:nrow(bins))),
+                       1000,
+                       "*")
+    colnames(bins) <- colnames(ots)
+    bins.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    write.table(bins, bins.tmp, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    cov.bin.tmp <- tempfile(tmpdir = dir1, fileext = ".bed")
+    bamCoverage(bam = bamFile, bed = bins.tmp, outFile = cov.bin.tmp, opt.string="-bed")
+    cov.bin <- read.delim(cov.bin.tmp, header = FALSE)
+    
+    cov.bin.df <- data.frame(cov.bin[, c(1:4, 7)],
+                             SYMBOL = readMat$SYMBOL[i])
+    colnames(cov.bin.df) <- c("chr", "start", "end", "bin", "TOT", "SYMBOL")
+    write.xlsx(cov.bin.df, file = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.xlsx")),
+               row.names = FALSE, overwrite = TRUE)
+    
+    ###############
+    # plot coverage
+    ggmat <- data.frame(CHR = cov$V1,
+                        POSITION = cov$V2 + cov$V7,
+                        COV = cov$V8)
+    
+    # COVERAGE
+    p <- ggplot(ggmat, aes(x= POSITION))
+    p <- p + geom_line(aes(y=COV), size = 1, alpha = 0.75)
+    
+    p <- p + geom_vline(xintercept = readMat$start[i], 
+                        color = "orangered", size=1)
+    p <- p + geom_vline(xintercept = readMat$end[i], 
+                        color = "orangered", size=1)
+    
+
+    
+    if(max(ggmat$COV >= 10000)){
+      p <- p + scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      )
+      p <- p + annotation_logticks() 
+    }
+    
+    if(!is.na(readMat$BestCB[i]) & readMat$group[i] != "NBS"){
+      cb <- readMat$BestCB[i]
+      gRNA1.x <- readMat[i, paste0(cb, "_aln.start.abs")]
+      aln.length <- nchar(readMat[i, paste0(cb, "_subject")])
+      gRNA2.x <- gRNA1.x + aln.length
+      
+      if(substring(cb, 1, 1) == "L"){
+        p <- p + geom_vline(xintercept = gRNA1.x, linetype="dashed", 
+                            color = "limegreen", size=1.5)
+        p <- p + geom_vline(xintercept = gRNA2.x, linetype="dashed", 
+                            color = "mediumpurple", size=1.5)
+      }else{
+        p <- p + geom_vline(xintercept = gRNA2.x, linetype="dashed", 
+                            color = "limegreen", size=1.5)
+        p <- p + geom_vline(xintercept = gRNA1.x, linetype="dashed", 
+                            color = "mediumpurple", size=1.5)
+      }
+      
+
+    }
+    
+    p <- p + theme_bw(base_size = 18) + theme(panel.grid.minor = element_blank())
+    p <- p + xlab("") + ylab("read coverage")
+    p <- p + theme(legend.position = "bottom", plot.title = element_text(size = 18, face = "bold"))
+    p <- p + ggtitle(ots.title)
+    ggsave(plot = p, filename = file.path(outDir, subDir, paste0(ots.name, "_", gsub("000$", "kb", window.size), "_bins.pdf")), 
+           width = 6, height = 4)
+    
+    # Delete tmp dir
+    unlink(dir1, recursive = T)
+    
+    
+  }, mc.cores = NBCPU)
+}
 
 
 # DO NOT RUN
 if(FALSE){
   library(ggplot2)
   library(openxlsx)
+  library(parallel)
+  
+  ########################################################################
+  # COVERAGE PLOT TEST
+  
+  inputFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/data_180521/KRT9/KRT9-T1_g1/results/guide_aln/KRT9-T1_w250_FINAL.xlsx")
+  bamFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/data_180521/KRT9/KRT9-T1_g1/results/fastq_aln/KRT9-T1_AlignmentSort.bam")
+  window.size = 1000
+  outDir <- file.path("~/Research/CASTSeq/test/")
+  
+  
+  start_time <- Sys.time()
+  
+  coverage_double(inputFile, bamFile, window.size = 1000, outDir)
+    
+  end_time <- Sys.time()
+  end_time - start_time
+  
+  # TALEN
+  inputFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/data_180521/STAT3/STAT3-T3edited-1/results/guide_aln/STAT3-T3edited-1_w250_FINAL.xlsx")
+  bamFile <- file.path("~/Research/CASTSeq/pipelineGit/samples/data_180521/STAT3/STAT3-T3edited-1/results/fastq_aln/STAT3-T3edited-1_AlignmentSort.bam")
+  window.size = 100
+  outDir <- file.path("~/Research/CASTSeq/test/")
+  
+  coverage_talen(inputFile, bamFile, window.size = 100, outDir)
+  
+  ########################################################################
+  # ON READOUT TEST
   
   # PARAMTERS
   window.size <- 5000

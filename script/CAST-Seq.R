@@ -98,12 +98,12 @@ if(is.null(opt$sampleDname)){
   stop("At least one argument must be supplied (sampleDname).n", call.=FALSE)
 }
 
-if(is.null(opt$sampleName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap"))){
+if(is.null(opt$sampleName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap", "crispr2_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (sampleName).n", call.=FALSE)
 }
 
-if(is.null(opt$controlName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap"))){
+if(is.null(opt$controlName) & !(opt$pipeline %in% c("crispr_overlap", "talen_overlap", "double_nickase_overlap", "crispr2_overlap"))){
   print_help(opt_parser)
   stop("At least one argument must be supplied (controlName).n", call.=FALSE)
 }
@@ -252,7 +252,13 @@ ovlD <- file.path(homeD, "samples_overlap", opt$ovlDname)
 ovlName <- opt$ovlName
 replicates <- opt$replicates
 repNames <- opt$repNames
-repD <- file.path(homeD, "samples", opt$repDname)
+
+repD <- opt$repDname
+if(!is.null(repD)){
+	repD.split <- strsplit(repD, split = ",")[[1]]
+	repD.split <- file.path(homeD, "samples", repD.split)
+}
+
 nb.ovl <- opt$ovl
 
 # REMOVE TMP FILES

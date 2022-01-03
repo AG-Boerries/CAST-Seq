@@ -22,12 +22,17 @@ runPipeline_crispr2_overlap <- function()
   print(replicates)
   print(repNames)
   print(repD)
+  print(repD.split)
   
   replicates.split <- strsplit(replicates, split = ",")[[1]]
   repNames.split <- strsplit(repNames, split = ",")[[1]]
+  #repD.split <- strsplit(repD, split = ",")[[1]]
   
   siteFiles <- paste0(replicates.split, "_w", w, "_FINAL.xlsx")
-  siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
+  #siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
+  siteFiles <- sapply(1:length(siteFiles), function(i) list.files(repD.split[i], pattern = siteFiles[i], recursive=TRUE, full.names = TRUE))
+  siteFiles <- lapply(siteFiles, function(i) i[grepl("\\/results\\/", i)])
+  siteFiles <- unlist(siteFiles)
   names(siteFiles) <- repNames.split
   
   print(siteFiles)
@@ -54,12 +59,32 @@ runPipeline_crispr2_overlap <- function()
                      alnFolder = ovlD,
                      gnm = GNM
   )
-  file.remove(list.files(guideD, pattern = "_TMP.txt", full.names = TRUE))
+  file.remove(list.files(ovlD, pattern = "_TMP.txt", full.names = TRUE))
   
   # GENERATE RANDOM SEQUENCE BED
   randomD <- file.path(sampleD, "results", "random")
   #dir.create(randomD, showWarnings = FALSE)
   randomName <- paste0("random_w", w)
+  
+  # PLOT GUIDE ALIGNMENT
+  guidePlot1(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
+            file.path(ovlD, paste0(ovlName, "_aln_heatmap.gRNA1.pdf")),
+            score = NULL, pv = NULL, ref = refSeq1)# ALL
+  
+  guidePlot2(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
+            file.path(ovlD, paste0(ovlName, "_aln_heatmap.gRNA2.pdf")),
+            score = NULL, pv = NULL, ref = refSeq2)# ALL
+		  
+  # LOGO PLOT
+  logoPlot1(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
+		 file.path(ovlD, paste0(ovlName, "_aln_logo.gRNA1.pdf")),
+		 score = NULL, pv = NULL, ref = refSeq1)# ALL
+		 
+  logoPlot2(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
+		 file.path(ovlD, paste0(ovlName, "_aln_logo.gRNA2.pdf")),
+		 score = NULL, pv = NULL, ref = refSeq2)# ALL	 
+		 
+		 
   
   ################     FLANKING REGIONS    ################ 
   print("################     FLANKING REGIONS    ################ ")
@@ -72,7 +97,7 @@ runPipeline_crispr2_overlap <- function()
   
   ################     DEFINE GROUPS    ################ 
   print("################     DEFINE GROUPS    ################ ")
-  assignGroups2(file.path(guideD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
+  assignGroups2(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
                             file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
                             otsBed,
                             pv.cutoff)
@@ -84,6 +109,13 @@ runPipeline_crispr2_overlap <- function()
                pv = pv.cutoff
   )	
   
+  guidePlot1(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
+          file.path(ovlD, paste0(ovlName, "_aln_heatmap_OMT.gRNA1.pdf")),
+          score = NULL, pv = NULL, ref = refSeq1, OMTonly = TRUE)# ALL	 
+  
+  guidePlot2(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
+          file.path(ovlD, paste0(ovlName, "_aln_heatmap_OMT.gRNA2.pdf")),
+          score = NULL, pv = NULL, ref = refSeq2, OMTonly = TRUE)# ALL	 
   
   ################     PIE CHARTS    ###############
   #print("################     PIE CHARTS    ###############")
@@ -142,9 +174,9 @@ runPipeline_crispr2_overlap <- function()
   
   
   ################     CHR PLOT    ################ 
-  chrPlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  chrPlot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
           file.path(ovlD, paste0(ovlName, "_aln_chrPlot.pdf")), hits = NULL, score = NULL, pv = NULL)
-  chrPlotAside(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  chrPlotAside(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
                file.path(ovlD, paste0(ovlName, "_aln_chrPlot")), hits = NULL, score = NULL, pv = NULL)
   
   
@@ -157,7 +189,7 @@ runPipeline_crispr2_overlap <- function()
   
   tryCatch(
     {
-      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+      circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
                             zoom.size = 25000, label = FALSE, 
                             PV.cutoff = NULL,
                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -168,9 +200,10 @@ runPipeline_crispr2_overlap <- function()
                             species = circos.sp)
     },
     error = function(e){
+      print(read.delim(otsBed, header = FALSE))
       print("no sites on defined otsBed, use max gRNA score")
       
-      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+      circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
                             zoom.size = 25000, label = FALSE, 
                             PV.cutoff = NULL,
                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -184,7 +217,7 @@ runPipeline_crispr2_overlap <- function()
   
   tryCatch(
     {
-      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+      circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
                             zoom.size = 25000, label = FALSE, 
                             PV.cutoff = NULL,
                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -195,9 +228,10 @@ runPipeline_crispr2_overlap <- function()
                             species = circos.sp)
     },
     error = function(e){
+      print(read.delim(otsBed, header = FALSE))
       print("no sites on defined otsBed, use max gRNA score")
       
-      circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+      circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
                             zoom.size = 25000, label = FALSE, 
                             PV.cutoff = NULL,
                             bestScore.cutoff = NULL, bestFlank.cutoff = 25,
@@ -235,6 +269,7 @@ runPipeline_crispr2_overlap <- function()
     mypattern <- c("_aln_stat_FLANK_GROUP_GENES.xlsx$", "_aln_stat_FLANK_GROUP.xlsx$",
                    "_aln_stat_FLANK.xlsx$", "_aln_stat.xlsx$")
     torm <- unlist(lapply(mypattern, function(mp) list.files(ovlD, pattern = mp, full.names = TRUE, recursive = TRUE)))
+    torm <- torm[file.exists(torm)]
     file.remove(torm)
   }
   

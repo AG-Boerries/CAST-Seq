@@ -74,6 +74,7 @@ doFisher <- function(tumor.reads, tumor.tot, ctl.reads, ctl.tot)
 	c <- tumor.tot - tumor.reads
 	d <- ctl.tot - ctl.reads
 	contigency.matrix <- cbind(c(a,b),c(c,d))
+	#print(contigency.matrix)
     res <- fisher.test(contigency.matrix, alternative = 'greater')
 	
 	resMat <- data.frame(OddRatio = res$estimate[[1]], pvalue = res$p.value)
