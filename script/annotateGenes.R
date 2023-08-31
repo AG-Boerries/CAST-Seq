@@ -104,10 +104,13 @@ getOddMatrix <- function(test, ref)
 }
 
 
-annotateGene <- function(inputFile)
+annotateGene <- function(inputFile, outputFile)
 {
 	# LOAD READMAT
 	readMat <- read.xlsx(inputFile, sheet = 1)
+	if(!("alignment.id" %in% colnames(readMat))){
+	  readMat$alignment.id <- paste0("aln_", 1:nrow(readMat))
+	}
 
 	# CHANGE START AND END INTO gRNA ALIGNMENT CORRDINATES
 	readMat.middle <-readMat
@@ -132,14 +135,17 @@ annotateGene <- function(inputFile)
 	readMat.merge <- readMat.merge[match(readMat$alignment.id, readMat.merge$alignment.id), ]
 	readMat.merge <- readMat.merge[, -1]# remove rownames
 
-	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE, overwrite = TRUE)
+	write.xlsx(readMat.merge, outputFile, row.names = FALSE, overwrite = TRUE)
 }
 
-annotateGeneTALEN <- function(inputFile)
+annotateGeneTALEN <- function(inputFile, outputFile)
 {
-	# LOAD READMAT
-	readMat <- read.xlsx(inputFile, sheet = 1)
-
+  # LOAD READMAT
+  readMat <- read.xlsx(inputFile, sheet = 1)
+  if(!("alignment.id" %in% colnames(readMat))){
+    readMat$alignment.id <- paste0("aln_", 1:nrow(readMat))
+  }
+  
 	# CHANGE START AND END INTO gRNA ALIGNMENT CORRDINATES
 	readMat.middle <- readMat
 	#readMat.middle$start <- readMat.middle$start + (readMat.middle$end - readMat.middle$start)
@@ -163,7 +169,7 @@ annotateGeneTALEN <- function(inputFile)
 	readMat.merge <- readMat.merge[match(readMat$alignment.id, readMat.merge$alignment.id), ]
 	readMat.merge <- readMat.merge[, -1]# remove rownames
 
-	write.xlsx(readMat.merge, gsub(".xlsx", "_GENES.xlsx", inputFile), row.names = FALSE, overwrite = TRUE)
+	write.xlsx(readMat.merge, outputFile, rowNames = FALSE, overwrite = TRUE)
 }
 
 
@@ -173,7 +179,8 @@ geneBarplot <- function(inputFile)
 	# Read inputFile
 	readMat.merge <- read.xlsx(inputFile, sheet = 1)
 	readMat.merge <- annotateExonIntron(readMat.merge)
-
+	readMat.merge <- annotateShort(readMat.merge)
+	
 	groups <- unique(readMat.merge$group)
 	peakAnnoList <- lapply(groups, function(i)
 		readMat.merge[readMat.merge$group == i, ]
@@ -187,11 +194,17 @@ geneBarplot <- function(inputFile)
 				   Group = names(peakAnnoList)[i])
 		)
 	ggmat <- do.call(rbind, ggmat)	
-	ggmat$Regions <- factor(ggmat$Regions, levels = rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)",
-		"5' UTR", "first Exon", "other Exon", "first Intron", "other Intron", "3' UTR",
-		"Downstream (<1kb)", "Downstream (1-2kb)", "Downstream (2-3kb)",
-		"Distal Intergenic"))
-		)
+	#ggmat$Regions <- factor(ggmat$Regions, levels = rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)",
+#		"5' UTR", "first Exon", "other Exon", "first Intron", "other Intron", "3' UTR",
+#		"Downstream (<=300bp)", "Downstream (<1kb)", "Downstream (1-2kb)", "Downstream (2-3kb)",
+#		"Distal Intergenic"))
+#		)
+
+	ggmat$Regions <- factor(ggmat$Regions, levels = rev(c("Promoter",
+	                                                      "5' UTR", "Body", "3' UTR",
+	                                                      "Downstream",
+	                                                      "Distal Intergenic"))
+	)
 	ggmat$Group <- factor(ggmat$Group, levels = rev(c("OMT", "HMT", "NBS"))
 		)		
 			
@@ -200,7 +213,7 @@ geneBarplot <- function(inputFile)
 	p <- p + theme_bw()	
 	p <- p + coord_flip()
 
-	pdf(gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_barplot.pdf", inputFile))
+	pdf(gsub("_GENES.xlsx", "_region_barplot.pdf", inputFile))
 	#png(gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_barplot.png", inputFile), units="px", width=1600, height=1600, res=300)
 	plot(p)
 	dev.off()
@@ -214,7 +227,8 @@ geneForestPlot <- function(inputFile, randomFile)
 	# Load input file
 	readMat.merge <- read.xlsx(inputFile, sheet = 1)
 	readMat.merge <- annotateExonIntron(readMat.merge)
-
+	readMat.merge <- annotateShort(readMat.merge)
+	
 	groups <- unique(readMat.merge$group)
 	peakAnnoList <- lapply(groups, function(i)
 		readMat.merge[readMat.merge$group == i, ]
@@ -224,14 +238,15 @@ geneForestPlot <- function(inputFile, randomFile)
 	# Load random file
 	rdMat <- read.xlsx(randomFile, sheet = 1)
 	rdMat <- annotateExonIntron(rdMat)
-
+	rdMat <- annotateShort(rdMat)
+	
 	# Forest plot
 	tableList <- lapply(peakAnnoList, function(i) table(i$annotation))
 	table.rd <- table(rdMat$annotation)
 
 	oddList <- lapply(tableList, getOddMatrix, ref = table.rd)
 
-	write.xlsx(oddList, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_odd_ratio.xlsx", inputFile), overwrite = TRUE)
+	write.xlsx(oddList, gsub("_GENES.xlsx", "_region_odd_ratio.xlsx", inputFile), overwrite = TRUE)
 
 	for(i in 1:length(oddList))
 		{
@@ -241,9 +256,12 @@ geneForestPlot <- function(inputFile, randomFile)
 	df <- do.call(rbind, oddList)
 
 	# reverses the factor level ordering for labels after coord_flip()
-	df$Region <- factor(df$Region, levels=rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)", "5' UTR",
-		"first Exon", "first Intron", "other Exon", "other Intron", "3' UTR", "Downstream (<1kb)", "Downstream (1-2kb)",
-		"Downstream (2-3kb)", "Distal Intergenic")))
+	#df$Region <- factor(df$Region, levels=rev(c("Promoter (2-3kb)", "Promoter (1-2kb)", "Promoter (<=1kb)", "5' UTR",
+	#	"first Exon", "first Intron", "other Exon", "other Intron", "3' UTR", "Downstream (<=300bp)", "Downstream (<1kb)", "Downstream (1-2kb)",
+	#	"Downstream (2-3kb)", "Distal Intergenic")))
+	df$Region <- factor(df$Region, levels=rev(c("Promoter", "5' UTR",
+	                                            "first Exon", "Body", "3' UTR",
+	                                            "Downstream", "Distal Intergenic")))
 
 	fp <- ggplot(data=df, aes(x=Region, y=Odd, ymin=Conf.int.low, ymax=Conf.int.high, color = Group)) +
 			geom_pointrange(position = position_dodge(width = 0.5)) + 
@@ -252,7 +270,7 @@ geneForestPlot <- function(inputFile, randomFile)
 			xlab("Label") + ylab("Odds ratio (95% CI)") +
 			theme_bw()  # use a white background
 
-	pdf(gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_odd_ratio.pdf", inputFile))
+	pdf(gsub("_GENES.xlsx", "_region_odd_ratio.pdf", inputFile))
 	#png(gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_region_odd_ratio.png", inputFile), units="px", width=1600, height=1600, res=300)
 	plot(fp)
 	dev.off()

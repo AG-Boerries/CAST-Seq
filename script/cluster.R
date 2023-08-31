@@ -11,7 +11,7 @@ getThreshold <- function(deltaFile, cutoff = 0.05)
 
 
 
-getHits <- function(testFile, threshold)# get hits
+getHitsOLD <- function(testFile, threshold)# get hits
 {
 	print("getHits")
 	CUTOFF <- threshold
@@ -45,7 +45,42 @@ getHits <- function(testFile, threshold)# get hits
 }
 
 
-
+getHits <- function(testFile, threshold)# get hits
+{
+  print("getHits")
+  CUTOFF <- threshold
+  #CUTOFF  <- 1500
+  
+  bed <- read.delim(testFile, stringsAsFactors = FALSE)
+  clusterTab <- c() # for each chomosome calculate the difference between one start site and the previous one
+  colTOkeep <- c(1:5)
+  colClust <- length(colTOkeep) +1
+  
+  clusterTab.chr <- mclapply(unique(bed[,1]), function(i){
+    clusterTab <- c() 
+    tempbed <- subset(bed,  chromosome==i) # take the data for one choromose 
+    for(n in 1:nrow(tempbed)){   # start for loop for each row
+      if( n == 1){ 
+        clusterTab <- rbind(clusterTab, unlist(c(tempbed[1,colTOkeep], 1)))  # report read in the final table
+      }
+      if(n >= 2 ){
+        if( tempbed$delta[n] <= CUTOFF ){
+          clusterTab[nrow(clusterTab), 3] <- tempbed$end[n]
+          clusterTab[nrow(clusterTab), colClust-1 ] <- as.numeric(clusterTab[nrow(clusterTab), colClust-1]) +  tempbed$read[n] 
+          clusterTab[nrow(clusterTab), colClust] <- as.numeric(clusterTab[nrow(clusterTab), colClust]) +1  # add collapsed sequence
+        }
+        if( tempbed$delta[n] >= CUTOFF ){ 
+          clusterTab <- rbind(clusterTab, unlist(c(tempbed[n,colTOkeep], 1)))
+        }
+      }
+    }
+    return(clusterTab)
+  }, mc.cores = NBCPU)
+  clusterTab <- do.call(rbind, clusterTab.chr)
+  colnames(clusterTab)[colClust] <- "hits"
+  #clusterTab <- cbind(clusterTab, width = as.numeric(clusterTab[, "end"]) - as.numeric(clusterTab[, "start"]))
+  write.table(clusterTab, gsub("delta", "hits", testFile), sep = "\t", row.names=F, quote = FALSE)
+}
 
 
 

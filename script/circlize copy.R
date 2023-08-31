@@ -33,12 +33,6 @@ extend_cytoband = function(bed, chromosome, start, end, prefix = "zoom_") {
   zoom_bed[[3]][nrow(zoom_bed)] <- end
   #print(zoom_bed)
   
-  # merge zoom cytobands
-  if(nrow(zoom_bed)>1){
-    zoom_bed[[3]][1] <- end
-    zoom_bed <- zoom_bed[1, ,drop = FALSE]
-  }
-  
   rbind(bed, zoom_bed)
 }
 
@@ -60,7 +54,6 @@ extend_bed = function(bed, chromosome, start, end, prefix = "zoom_") {
   
   rbind(bed, zoom_bed)
 }
-
 
 circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
                              PV.cutoff = NULL,
@@ -217,16 +210,13 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
   siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord < zoom_lower_limit] <- zoom_lower_limit
   siteM$middleCoord[grepl("zoom_", siteM$chromosome) & siteM$middleCoord > zoom_upper_limit] <- zoom_upper_limit
   
-  
-  
   # REMOVE DUPLICATED SITES
   siteM.sub <- siteM[-toRemove, ]# remove duplicated sites, keep only the ones in zoom area
   group <- siteM.sub[, "group"]
   group[group == "OMT" & siteM.sub$is.HMT == "yes"] <- "OMT/HMT"
   
   # ON target
-  #group[siteM.sub$is.ON == "yes"] <- "ON"
-  group[siteM.sub$is.ON == "yes" & (group == "OMT" | group == "OMT/HMT")] <- "ON"
+  group[siteM.sub$is.ON == "yes"] <- "ON"
   
   group.bed <- data.frame(chr = siteM.sub$chromosome,
                           start =  siteM.sub$middleCoord,
@@ -272,8 +262,7 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
   bestScore.OMT <- ifelse(siteM$group == "OMT", TRUE, FALSE)
   
   bestScore.cutoff <- floor(min(bestScore[siteM$group == "OMT"]))
-  if(is.null(bestScore.cutoff) | bestScore.cutoff == Inf) bestScore.cutoff <- max(bestScore)
-  if(nrow(siteM)==2) bestScore.cutoff <- bestScore.cutoff * 0.75# fix a visual bug when only one site
+  if(is.null(bestScore.cutoff)) bestScore.cutoff <- max(bestScore)
   
   # fill missing chr
   missing.chr <- setdiff(unique(new_cytoband_df[[1]]), bestScore.chr)
@@ -305,7 +294,7 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
                  
                  #print(xlim)
                  #print(ylim)
-                 circos.rect(xlim[1], bestScore.cutoff, xlim[2], (ceiling(ylim[2])+ceiling(ylim[2])*0.2), col = "#FF000020", border = NA)
+                 circos.rect(xlim[1], bestScore.cutoff, xlim[2], ceiling(ylim[2])+3, col = "#FF000020", border = NA)
                  
                  circos.points(x[y < bestScore.cutoff & y !=0], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
                  circos.points(x[y >= bestScore.cutoff & y !=0], y[y >= bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "red")
@@ -380,42 +369,32 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
   
   #################
   # GENE ANNOTATION
-  plotGene <- FALSE
   if(!is.null(gene.bed)){
     geneM <- read.delim(gene.bed, header = FALSE)# must be 4 columns: chr, start, end, symbol
     geneM[,1] <- paste0("zoom_", geneM[,1])
-    plotGene <- TRUE
-  }else if("yes" %in% siteM.sub$is.ON){# define gene based on ON-target coordinates
-    geneM <- siteM.sub[siteM.sub$is.ON == "yes", c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
-    plotGene <- TRUE
+  }else{# define gene based on ON-target coordinates
+    geneM <- siteM.sub[group == "ON", c("chromosome", "geneStart", "geneEnd", "SYMBOL")]
   }
   
-  if(plotGene){
-    if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
-    if(class(geneM[,3]) == "factor") geneM[,3] <- as.numeric(levels(geneM[,3]))[geneM[,3]]
-    if(class(geneM[,4]) == "factor") geneM[,4] <- as.character(geneM[,4])
-    
-    # adjust gene coordinates
-    zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
-    zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
-    geneM$geneStart <- sapply(geneM$geneStart, function(x) max(c(x, zoom.min)))
-    geneM$geneEnd <- sapply(geneM$geneEnd, function(x) min(c(x, zoom.max)))
-    
-    isMinusGene <- sapply(1:nrow(geneM), function(x) as.numeric(geneM$geneEnd[x]) < as.numeric(geneM$geneStart[x]))
-    geneM$geneStartRAW <- geneM$geneStart
-    geneM$geneEndRAW <- geneM$geneEnd
-    geneM$geneStart[isMinusGene] <- geneM$geneEndRAW[isMinusGene]
-    geneM$geneEnd[isMinusGene] <- geneM$geneStartRAW[isMinusGene]
-    
-    #if(geneM$geneEnd < geneM$geneStart) geneM$geneEnd <- geneM$geneStart
-    
-    color <- c("grey40")
-    
-    circos.genomicTrackPlotRegion(geneM, stack = TRUE, panel.fun = function(region, value, ...) {
-      circos.genomicRect(region, value, col = color, border = NA)
-      #circos.genomicText(region, value, labels = c(2,5))
-    }, bg.border = NA, bg.col = NA, track.height = 0.05, track.index = get.cell.meta.data("track.index") - 2, track.margin = c(0,0))
-  }
+  if(class(geneM[,2]) == "factor") geneM[,2] <- as.numeric(levels(geneM[,2]))[geneM[,2]]
+  if(class(geneM[,3]) == "factor") geneM[,3] <- as.numeric(levels(geneM[,3]))[geneM[,3]]
+  if(class(geneM[,4]) == "factor") geneM[,4] <- as.character(geneM[,4])
+  
+  # adjust gene coordinates
+  zoom.min <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V2"]
+  zoom.max <- new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]), "V3"]
+  if(geneM$geneStart < zoom.min) geneM$geneStart <- zoom.min
+  if(geneM$geneEnd > zoom.max) geneM$geneEnd <- zoom.max
+  
+  if(geneM$geneEnd < geneM$geneStart) geneM$geneEnd <- geneM$geneStart
+  
+  color <- c("grey40")
+  
+  circos.genomicTrackPlotRegion(geneM, stack = TRUE, panel.fun = function(region, value, ...) {
+    circos.genomicRect(region, value, col = color, border = NA)
+    #circos.genomicText(region, value, labels = c(2,5))
+  }, bg.border = NA, bg.col = NA, track.height = 0.05, track.index = get.cell.meta.data("track.index") - 2, track.margin = c(0,0))
+  
   
   ###########
   # LINK ZOOM
@@ -433,7 +412,7 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
   gr.ovl <- findOverlaps(query = zoom.gr, subject = ori.gr, type = "any", maxgap = 0)
   
   circos.genomicLink(new_cytoband_df[grepl("^zoom_", new_cytoband_df[,1]),],
-                     new_cytoband_df[subjectHits(gr.ovl)[1],],
+                     new_cytoband_df[subjectHits(gr.ovl),],
                      col = "grey50",
                      border = NA)
   
@@ -453,7 +432,6 @@ circlizePipeline <- function(siteFile, zoom.size = 25000, label = FALSE,
   
   # Manually define the ON-TARGET
   ots.idx <- which(group == "ON")
-  if(length(ots.idx) == 0) ots.idx <- which(siteM.sub$is.ON == "yes")
   bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
                      start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
                      end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
@@ -609,8 +587,22 @@ circlizePipelineNOZOOM <- function(siteFile, label = FALSE,
   group[group == "OMT" & siteM.sub$is.HMT == "yes"] <- "OMT/HMT"
   
   # ON target
-  group[siteM.sub$is.ON == "yes" & (group == "OMT" | group == "OMT/HMT")] <- "ON"
-  
+  if(!is.null(ots.bed)){
+    ots.df <- read.delim(ots.bed, header = FALSE)
+    ots.df <- ots.df[1,,drop = FALSE]# only take the first ON target into account
+    ots.gr <- makeGRangesFromDataFrame(ots.df,
+                                       seqnames.field = "V1", start.field = "V2", end.field = "V3",
+                                       keep.extra.columns = FALSE, ignore.strand = TRUE)
+    siteM.sub.gr <- makeGRangesFromDataFrame(siteM.sub,
+                                             seqnames.field = "chromosome", start.field = "start", end.field = "end",
+                                             keep.extra.columns = FALSE, ignore.strand = TRUE)
+    
+    gr.ovl <- findOverlaps(query = ots.gr, subject = siteM.sub.gr, type = "any", maxgap = 0)
+    #print(siteM.sub[subjectHits(gr.ovl), ])
+    group[subjectHits(gr.ovl)] <- "ON"
+  }else{# Use the on with higher reads as ON target
+    group[which.max(siteM.sub$score)] <- "ON"
+  }
   
   group.bed <- data.frame(chr = siteM.sub$chromosome,
                           start =  siteM.sub$middleCoord,
@@ -618,195 +610,192 @@ circlizePipelineNOZOOM <- function(siteFile, label = FALSE,
                           value = group)
   group.color <- rep("grey", length(group))
   group.color[group == "ON"] <- "green"
-    group.color[group == "OMT"] <- "red"
-      group.color[group == "HMT"] <- "blue"
-        group.color[group == "OMT/HMT"] <- "goldenrod1"
-          
-        # REMOVE NBS LABELS
-        isNBS <- group.bed$value == "NBS"
-        group.bed <- group.bed[!isNBS, ]
-        group.color <- group.color[!isNBS]
-        
-        if(label){
-          circos.genomicLabels(group.bed, labels.column = 4, side = "outside",
-                               cex = 0.5, font = 1,
-                               col = group.color, line_col = group.color,
-                               line_lwd = par("lwd")*1.5, 
-                               connection_height = convert_height(0.5, "mm"),
-                               labels_height = convert_height(0.5, "cm"),
-                               track.margin = c(0.025,0))
-        }
-        
-        
-        # ADD CHR NAMES
-        circos.track(ylim = c(0, 1), panel.fun = function(x, y) {
-          circos.text(CELL_META$xcenter,1, gsub("chr", "", CELL_META$sector.index), cex = 0.8, col = "black",
-                      facing = "clockwise", niceFacing = TRUE)
-        }, track.height = 0.05, bg.border = NA, track.margin = c(0,0.015))
-        
-        # ADD IDEOGRAM
-        circos.genomicIdeogram(cytoband_df,  track.margin = c(0,0.015))
-        
-        ##################
-        # BEST SCORE TRACK
-        bestScore <- siteM[, "score"]
-        bestScore.chr <- siteM[, "chromosome"]
-        bestScore.x <- siteM$middleCoord
-        bestScore.OMT <- ifelse(siteM$group == "OMT", TRUE, FALSE)
-        
-        bestScore.cutoff <- floor(min(bestScore[siteM$group == "OMT"]))
-        if(is.null(bestScore.cutoff) | bestScore.cutoff == Inf) bestScore.cutoff <- max(bestScore)
-        if(nrow(siteM)==2) bestScore.cutoff <- bestScore.cutoff * 0.75# fix a visual bug when only one site
-        
-        # fill missing chr
-        missing.chr <- setdiff(unique(cytoband_df[[1]]), bestScore.chr)
-        bestScore <- c(bestScore, rep(0, length(missing.chr)))
-        bestScore.chr <- c(bestScore.chr, missing.chr)
-        bestScore.x  <- c(bestScore.x, rep(0, length(missing.chr)))
-        bestScore.OMT <- c(bestScore.OMT, rep(FALSE, length(missing.chr)))
-        
-        #
-        bestScore[bestScore >= bestScore.cutoff & !bestScore.OMT] <- bestScore.cutoff -1 
-        bestScore[bestScore < bestScore.cutoff & bestScore.OMT] <- bestScore.cutoff
-        
-        circos.track(factors = bestScore.chr, x = bestScore.x, y = bestScore, bg.col = "#EEEEEE",
-                     bg.border = NA, track.height = 0.1, panel.fun = function(x, y) {
-                       
-                       cell.xlim = get.cell.meta.data("cell.xlim")
-                       cell.ylim = get.cell.meta.data("cell.ylim")
-                       
-                       print(cell.xlim)
-                       print(cell.ylim)
-                       
-                       # reference lines
-                       for(yi in floor(seq(0, max(bestScore), length.out = 3))) {
-                         circos.lines(cell.xlim, c(yi, yi), lty = 2, col = "white") 
-                       }
-                       
-                       xlim = get.cell.meta.data("xlim")
-                       ylim = get.cell.meta.data("ylim")
-                       
-                       #print(xlim)
-                       #print(ylim)
-                       circos.rect(xlim[1], bestScore.cutoff, xlim[2], ceiling(ylim[2])+3, col = "#FF000020", border = NA)
-                       
-                       circos.points(x[y < bestScore.cutoff & y !=0], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
-                       circos.points(x[y >= bestScore.cutoff], y[y >= bestScore.cutoff], pch = 16, cex = 0.75, col = "red")
-                     })
-        
-        circos.yaxis(side = "left", at = c(bestScore.cutoff, floor(max(bestScore))), #floor(seq(0, max(bestScore), length.out = 3))
-                     sector.index = get.all.sector.index()[1], labels.cex = 0.5,
-                     tick.length = convert_x(0.75, "mm", get.all.sector.index()[1],get.cell.meta.data("track.index")),
-                     lwd = par("lwd") * 1.25)
-        
-        ##################
-        # BEST FLANK TRACK
-        bestFlank <- apply(as.matrix(siteM[, c("flank.length", "flank.rev.length")]), 1, max)
-        bestFlank[bestFlank > 30] <- 30
-        bestFlank.chr <- siteM[, "chromosome"]
-        #bestFlank.cutoff <- 25
-        bestFlank.x <- siteM$middleCoord
-        #bestFlank.x <-siteM$start + round((siteM$end - siteM$start) / 2)
-        
-        # fill missing chr
-        missing.chr <- setdiff(unique(cytoband_df[[1]]), bestFlank.chr)
-        bestFlank <- c(bestFlank, rep(0, length(missing.chr)))
-        bestFlank.chr <- c(bestFlank.chr, missing.chr)
-        bestFlank.x  <- c(bestFlank.x, rep(0, length(missing.chr)))
-        
-        circos.track(factors = bestFlank.chr, x = bestFlank.x, y = bestFlank, bg.col = "#EEEEEE",
-                     bg.border = NA, track.height = 0.1, panel.fun = function(x, y) {
-                       
-                       cell.xlim = get.cell.meta.data("cell.xlim")
-                       cell.ylim = get.cell.meta.data("cell.ylim")
-                       
-                       print(cell.xlim)
-                       print(cell.ylim)
-                       
-                       # reference lines
-                       #for(xi in seq(cell.xlim[1], cell.xlim[2], length.out = 3)) {
-                       # circos.lines(c(xi, xi), cell.ylim, lty = 2, col = "white") 
-                       #}
-                       for(yi in floor(seq(0, max(bestFlank), length.out = 3))) {
-                         circos.lines(cell.xlim, c(yi, yi), lty = 2, col = "white") 
-                       }
-                       
-                       xlim = get.cell.meta.data("xlim")
-                       ylim = get.cell.meta.data("ylim")
-                       
-                       print(xlim)
-                       print(ylim)
-                       circos.rect(xlim[1], bestFlank.cutoff, xlim[2], ceiling(ylim[2])+5, col = "cornflowerblue", border = NA)
-                       
-                       circos.points(x[y < bestFlank.cutoff & y !=0], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
-                       circos.points(x[y >= bestFlank.cutoff], y[y >= bestFlank.cutoff], pch = 16, cex = 0.75, col = "blue")
-                       
-                     },  track.margin = c(0,0))
-        
-        circos.yaxis(side = "left", at = c(0, bestFlank.cutoff), #floor(seq(0, max(bestFlank), length.out = 3))
-                     sector.index = get.all.sector.index()[1], labels.cex = 0.5,
-                     tick.length = convert_x(0.75, "mm", get.all.sector.index()[1], get.cell.meta.data("track.index")),
-                     lwd = par("lwd") * 1.25)
-        
-        ################################
-        # LINK ON TARGETS TO ALL TARGETS
-        bed2 <- siteM.sub[, 1:4]
-        #bed2$start <- bed2$start + round((bed2$end - bed2$start) / 2)
-        bed2$start <- siteM.sub$middleCoord
-        
-        # Re-Arange layout
-        mysize <- 30000000
-        bed2$end <- bed2$start + mysize
-        bed2$start <- bed2$start - mysize
-        
-        # Manually define the ON-TARGET
-        if(!is.null(ots.bed)){
-          ots.idx <- which(group == "ON")
-          if(length(ots.idx) == 0) ots.idx <- which(siteM.sub$is.ON == "yes")
-          bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
-                             start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
-                             end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
-                             value1 = 0)
-        }else{# use middle coordinates
-          ots.idx <- which.max(siteM.sub$score)
-          bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
-                             start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
-                             end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
-                             value1 = 0)
-        }
-        
-        
-        link.color <- rep(rgb(190, 190, 190, max = 255, alpha = 175), length(group))# grey
-        link.color[group == "ON"] <- rgb(0, 255, 0, max = 255, alpha = 225)# green
-        link.color[group == "OMT"] <- rgb(255, 0, 0, max = 255, alpha = 175)# red
-        link.color[group == "HMT"] <- rgb(0, 0, 255, max = 255, alpha = 175)# blue
-        link.color[group == "OMT/HMT"] <- rgb(255, 193, 37, max = 255, alpha = 175)# goldenrod1
-        
-        # ON to ON
-        #idx <- which.max(siteM.sub$score)# ON TARGET IDX
-        idx <- ots.idx
-        #bed2.sub <- bed2[idx, ]# SELECT ON
-        bed1.sub <- bed1[idx, ]
-        
-        bed1.sub$start <- bed1.sub$start + round(bed1.sub$end - bed1.sub$start) 
-        bed1.sub$start <- bed1.sub$start - (mysize*2)
-        #bed1.sub$end <- bed1.sub$end + mysize
-        #bed1.sub$end <- bed1.sub$start + 4000
-        
-        #bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 2.5))
-        #bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
-        link.color.sub = link.color[idx]
-        
-        # ON to OFF
-        bed2 <- bed2[-idx, ]# REMOVE ON
-        bed1 <- bed1[-idx, ]
-        link.color = link.color[-idx]
-        
-        circos.genomicLink(bed1, bed2, col = link.color, border = NA, h.ratio = 0.5)
-        circos.genomicLink(bed1.sub, bed1.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
-        #circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
-        
-        dev.off()
-        
+  group.color[group == "OMT"] <- "red"
+  group.color[group == "HMT"] <- "blue"
+  group.color[group == "OMT/HMT"] <- "goldenrod1"
+  
+  # REMOVE NBS LABELS
+  isNBS <- group.bed$value == "NBS"
+  group.bed <- group.bed[!isNBS, ]
+  group.color <- group.color[!isNBS]
+  
+  if(label){
+    circos.genomicLabels(group.bed, labels.column = 4, side = "outside",
+                         cex = 0.5, font = 1,
+                         col = group.color, line_col = group.color,
+                         line_lwd = par("lwd")*1.5, 
+                         connection_height = convert_height(0.5, "mm"),
+                         labels_height = convert_height(0.5, "cm"),
+                         track.margin = c(0.025,0))
+  }
+  
+  
+  # ADD CHR NAMES
+  circos.track(ylim = c(0, 1), panel.fun = function(x, y) {
+    circos.text(CELL_META$xcenter,1, gsub("chr", "", CELL_META$sector.index), cex = 0.8, col = "black",
+                facing = "clockwise", niceFacing = TRUE)
+  }, track.height = 0.05, bg.border = NA, track.margin = c(0,0.015))
+  
+  # ADD IDEOGRAM
+  circos.genomicIdeogram(cytoband_df,  track.margin = c(0,0.015))
+  
+  ##################
+  # BEST SCORE TRACK
+  bestScore <- siteM[, "score"]
+  bestScore.chr <- siteM[, "chromosome"]
+  bestScore.x <- siteM$middleCoord
+  bestScore.OMT <- ifelse(siteM$group == "OMT", TRUE, FALSE)
+  
+  bestScore.cutoff <- floor(min(bestScore[siteM$group == "OMT"]))
+  if(is.null(bestScore.cutoff)) bestScore.cutoff <- max(bestScore)
+  
+  # fill missing chr
+  missing.chr <- setdiff(unique(cytoband_df[[1]]), bestScore.chr)
+  bestScore <- c(bestScore, rep(0, length(missing.chr)))
+  bestScore.chr <- c(bestScore.chr, missing.chr)
+  bestScore.x  <- c(bestScore.x, rep(0, length(missing.chr)))
+  bestScore.OMT <- c(bestScore.OMT, rep(FALSE, length(missing.chr)))
+  
+  #
+  bestScore[bestScore >= bestScore.cutoff & !bestScore.OMT] <- bestScore.cutoff -1 
+  bestScore[bestScore < bestScore.cutoff & bestScore.OMT] <- bestScore.cutoff
+  
+  circos.track(factors = bestScore.chr, x = bestScore.x, y = bestScore, bg.col = "#EEEEEE",
+               bg.border = NA, track.height = 0.1, panel.fun = function(x, y) {
+                 
+                 cell.xlim = get.cell.meta.data("cell.xlim")
+                 cell.ylim = get.cell.meta.data("cell.ylim")
+                 
+                 print(cell.xlim)
+                 print(cell.ylim)
+                 
+                 # reference lines
+                 for(yi in floor(seq(0, max(bestScore), length.out = 3))) {
+                   circos.lines(cell.xlim, c(yi, yi), lty = 2, col = "white") 
+                 }
+                 
+                 xlim = get.cell.meta.data("xlim")
+                 ylim = get.cell.meta.data("ylim")
+                 
+                 #print(xlim)
+                 #print(ylim)
+                 circos.rect(xlim[1], bestScore.cutoff, xlim[2], ceiling(ylim[2])+3, col = "#FF000020", border = NA)
+                 
+                 circos.points(x[y < bestScore.cutoff & y !=0], y[y < bestScore.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y >= bestScore.cutoff], y[y >= bestScore.cutoff], pch = 16, cex = 0.75, col = "red")
+               })
+  
+  circos.yaxis(side = "left", at = c(bestScore.cutoff, floor(max(bestScore))), #floor(seq(0, max(bestScore), length.out = 3))
+               sector.index = get.all.sector.index()[1], labels.cex = 0.5,
+               tick.length = convert_x(0.75, "mm", get.all.sector.index()[1],get.cell.meta.data("track.index")),
+               lwd = par("lwd") * 1.25)
+  
+  ##################
+  # BEST FLANK TRACK
+  bestFlank <- apply(as.matrix(siteM[, c("flank.length", "flank.rev.length")]), 1, max)
+  bestFlank[bestFlank > 30] <- 30
+  bestFlank.chr <- siteM[, "chromosome"]
+  #bestFlank.cutoff <- 25
+  bestFlank.x <- siteM$middleCoord
+  #bestFlank.x <-siteM$start + round((siteM$end - siteM$start) / 2)
+  
+  # fill missing chr
+  missing.chr <- setdiff(unique(cytoband_df[[1]]), bestFlank.chr)
+  bestFlank <- c(bestFlank, rep(0, length(missing.chr)))
+  bestFlank.chr <- c(bestFlank.chr, missing.chr)
+  bestFlank.x  <- c(bestFlank.x, rep(0, length(missing.chr)))
+  
+  circos.track(factors = bestFlank.chr, x = bestFlank.x, y = bestFlank, bg.col = "#EEEEEE",
+               bg.border = NA, track.height = 0.1, panel.fun = function(x, y) {
+                 
+                 cell.xlim = get.cell.meta.data("cell.xlim")
+                 cell.ylim = get.cell.meta.data("cell.ylim")
+                 
+                 print(cell.xlim)
+                 print(cell.ylim)
+                 
+                 # reference lines
+                 #for(xi in seq(cell.xlim[1], cell.xlim[2], length.out = 3)) {
+                 # circos.lines(c(xi, xi), cell.ylim, lty = 2, col = "white") 
+                 #}
+                 for(yi in floor(seq(0, max(bestFlank), length.out = 3))) {
+                   circos.lines(cell.xlim, c(yi, yi), lty = 2, col = "white") 
+                 }
+                 
+                 xlim = get.cell.meta.data("xlim")
+                 ylim = get.cell.meta.data("ylim")
+                 
+                 print(xlim)
+                 print(ylim)
+                 circos.rect(xlim[1], bestFlank.cutoff, xlim[2], ceiling(ylim[2])+5, col = "cornflowerblue", border = NA)
+                 
+                 circos.points(x[y < bestFlank.cutoff & y !=0], y[y < bestFlank.cutoff & y !=0], pch = 16, cex = 0.75, col = "grey")
+                 circos.points(x[y >= bestFlank.cutoff], y[y >= bestFlank.cutoff], pch = 16, cex = 0.75, col = "blue")
+                 
+               },  track.margin = c(0,0))
+  
+  circos.yaxis(side = "left", at = c(0, bestFlank.cutoff), #floor(seq(0, max(bestFlank), length.out = 3))
+               sector.index = get.all.sector.index()[1], labels.cex = 0.5,
+               tick.length = convert_x(0.75, "mm", get.all.sector.index()[1], get.cell.meta.data("track.index")),
+               lwd = par("lwd") * 1.25)
+  
+  ################################
+  # LINK ON TARGETS TO ALL TARGETS
+  bed2 <- siteM.sub[, 1:4]
+  #bed2$start <- bed2$start + round((bed2$end - bed2$start) / 2)
+  bed2$start <- siteM.sub$middleCoord
+  
+  # Re-Arange layout
+  mysize <- 30000000
+  bed2$end <- bed2$start + mysize
+  bed2$start <- bed2$start - mysize
+  
+  # Manually define the ON-TARGET
+  if(!is.null(ots.bed)){
+    ots.idx <- which(group == "ON")
+    bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
+                       value1 = 0)
+  }else{# use middle coordinates
+    ots.idx <- which.max(siteM.sub$score)
+    bed1 <- data.frame(chr = rep(siteM.sub$chromosome[ots.idx], nrow(bed2)),
+                       start = rep(siteM.sub$middleCoord[ots.idx] - mysize, nrow(bed2)),# 46359961
+                       end = rep(siteM.sub$middleCoord[ots.idx] + mysize, nrow(bed2)),# 46380781
+                       value1 = 0)
+  }
+  
+  
+  link.color <- rep(rgb(190, 190, 190, max = 255, alpha = 175), length(group))# grey
+  link.color[group == "ON"] <- rgb(0, 255, 0, max = 255, alpha = 225)# green
+  link.color[group == "OMT"] <- rgb(255, 0, 0, max = 255, alpha = 175)# red
+  link.color[group == "HMT"] <- rgb(0, 0, 255, max = 255, alpha = 175)# blue
+  link.color[group == "OMT/HMT"] <- rgb(255, 193, 37, max = 255, alpha = 175)# goldenrod1
+  
+  # ON to ON
+  #idx <- which.max(siteM.sub$score)# ON TARGET IDX
+  idx <- ots.idx
+  #bed2.sub <- bed2[idx, ]# SELECT ON
+  bed1.sub <- bed1[idx, ]
+  
+  bed1.sub$start <- bed1.sub$start + round(bed1.sub$end - bed1.sub$start) 
+  bed1.sub$start <- bed1.sub$start - (mysize*2)
+  #bed1.sub$end <- bed1.sub$end + mysize
+  #bed1.sub$end <- bed1.sub$start + 4000
+  
+  #bed1.sub$end <- bed1.sub$start + round(((bed1.sub$end - bed1.sub$start) / 2.5))
+  #bed2.sub$start <- bed2.sub$end - round(((bed2.sub$end - bed2.sub$start) / 2.5))
+  link.color.sub = link.color[idx]
+  
+  # ON to OFF
+  bed2 <- bed2[-idx, ]# REMOVE ON
+  bed1 <- bed1[-idx, ]
+  link.color = link.color[-idx]
+  
+  circos.genomicLink(bed1, bed2, col = link.color, border = NA, h.ratio = 0.5)
+  circos.genomicLink(bed1.sub, bed1.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
+  #circos.genomicLink(bed1.sub, bed2.sub, col = link.color.sub, border = NA, h.ratio = 0.1)# ON -ON
+  
+  dev.off()
+  
 }
-

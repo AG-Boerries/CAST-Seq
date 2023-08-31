@@ -28,7 +28,7 @@ getBestAln <- function(aln1, aln2)
 	return(aln1)
 }
 
-getStrAlignment <- function(aln.file)
+getStrAlignmentOLD <- function(aln.file)
 {
 	#aln.str <- read_document(aln.file)
 	aln.str <- read.delim(aln.file, sep = "\t", header = FALSE)
@@ -49,8 +49,12 @@ getStrAlignment <- function(aln.file)
 	return(c(test.str, ref.str))
 }
 
+getStrAlignment <- function(aln){
+  return(c(as.character(pattern(aln)), as.character(subject(aln))))
+}
 
-getStartPosition <- function(aln.file)
+
+getStartPositionOLD <- function(aln.file)
 {
 	#aln.str <- read_document(aln.file)
 	aln.str <- read.delim(aln.file, sep = "\t", header = FALSE)
@@ -63,7 +67,10 @@ getStartPosition <- function(aln.file)
 	return(test.str[2])
 }
 
-
+getStartPosition <- function(aln)
+{
+  return(as.numeric(start(pattern(aln))))
+}
 
 getAlnStat <- function(aln)
 {
@@ -141,25 +148,36 @@ getAlnSumStr <- function(aln.test, aln.ref)
 	return(paste(alnChar, collapse=""))
 }
 
-getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
+getGuideAlignment <- function(inputF, outputF, guide, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens, binCoord = FALSE)
 {
 	# DEFINE REFERENCE SEQUENCE
 	refSeq <- guide
 
-	# LOAD BED FILE
+	# LOAD FILE
 	if(file_ext(inputF) == "bed"){
-		readMat <- read.delim(inputF, header = FALSE)
-		colnames(readMat) <- c("chromosome", "start", "end", "ID_read", "size", "strand")
-		}else{
-			readMat <- read.xlsx(inputF)
-			}	
+	  readMat <- read.delim(inputF, header = FALSE)
+	  colnames(readMat) <- c("chromosome", "start", "end", "ID_read", "size", "strand")
+	}else{
+	  readMat <- read.xlsx(inputF)
+	}	
+	
+	# USE BIN COORDINATES (DEFAULT); OTHERWISE:
+	if(!binCoord & "start.site" %in% colnames(readMat)){
+	  readMat$start <- readMat$start.site
+	  readMat$end <- readMat$end.site
+	}
+	
 	inputName <- gsub(paste0(".", file_ext(inputF)), "", basename(inputF))	
 	print(inputName)
+	alnFolder <- dirname(inputF)
+
+	print(dim(readMat))
 	
 	# REGIONS 2 SEQUENCE
 	sequences <- bed2sequence(readMat, g = gnm)
-	sequences <- c(refSeq, sequences)# add refSeq
+	#sequences <- c(refSeq, sequences)# add refSeq
 
+	print(length(sequences))
 
 	###########
 	# ALIGNMENT
@@ -185,52 +203,17 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	alnList <- lapply(1:length(alnList.norm), function(i)
 		getBestAln(alnList.norm[[i]], alnList.rev[[i]])
 		)
-
+	names(alnList) <- paste0(inputName, "_aln", 1:length(alnList))	
+	
+	
 	refSeqList <- rep("norm.", length(alnList))
 	isRev <- unlist(lapply(1:length(alnList), function(i) identical(alnList[[i]], alnList.rev[[i]])))
 	refSeqList[isRev] <- "rev. comp."
-	refSeqList <- refSeqList[-1]# remove refSeq alignment	
+	#refSeqList <- refSeqList[-1]# remove refSeq alignment	
 	
-	# SAVE
-	dir.create(alnFolder, showWarnings = FALSE)
-
-	dir1 <- file.path(tempdir(), "tmpDIR")
-	dir.create(dir1)# TMP DIR
+	alnList.str <- lapply(alnList, getStrAlignment)
 	
-	guideTMP <- tempfile(tmpdir = dir1, fileext = ".txt")
 	
-	#writePairwiseAlignments(alnList[[1]],
-  # 	file = file.path(alnFolder, "guide_aln_TMP.txt"))
-	
-	writePairwiseAlignments(alnList[[1]],
-	                        file = guideTMP)
-
-	alnList <- alnList[-1]# remove refSeq alignment
-	names(alnList) <- paste0(inputName, "_aln", 1:length(alnList))	
-
-	tmpFiles <- sapply(1:length(alnList), function(i) tempfile(tmpdir = dir1, fileext = ".txt"))
-	
-	lapply(1:length(alnList), function(i){
-	  
-	  #writePairwiseAlignments(alnList[[i]],
-	  #                       file = file.path(alnFolder, paste0(names(alnList)[i], "_TMP.txt")))
-	  writePairwiseAlignments(alnList[[i]], file = tmpFiles[i])
-	  
-	})
-	
-
-	# GET PROPER ALIGNMENT (FIX ISSUE WITH INDEL IN FIRST / LAST POSITION)
-	#alnFiles <- list.files(alnFolder, pattern = "_TMP.txt")
-	#names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
-
-	#alnFiles <- alnFiles[names(alnList)]# Re-order
-	
-	#alnList.str <- lapply(alnFiles, function(i)
-  #	getStrAlignment(file.path(alnFolder, i))
-	#	)
-	
-	alnList.str <- lapply(tmpFiles, getStrAlignment)
-
 	alnMat <- do.call(rbind, alnList.str)# 1st column: test, 2nd column: ref
 
 	# GET ALIGNMENT SUMMARY STR
@@ -239,17 +222,17 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 		))
 
 	# START POSITION IN TEST SEQUENCE
-	#alnStart <- as.numeric(unlist(lapply(alnFiles, function(i)
-	#	getStartPosition(file.path(alnFolder, i)))))
-	
-	alnStart <- as.numeric(unlist(lapply(tmpFiles, function(i)
+	alnStart <- as.numeric(unlist(lapply(alnList, function(i)
 	  getStartPosition(i))))
 
 	# RELATIVE COORDINATES
 	middleCoord <- floor((readMat$end - readMat$start) / 2)
 	middleCoord.abs <- readMat$start + middleCoord
-	#alnStart.rel <- alnStart - middleCoord
-	#alnStart.abs <- alnStart + readMat$start
+	
+	print(dim(alnMat))
+  	print(length(alnList))
+	print(length(alnStart))
+	print(length(refSeqList))
 	
 	alnStart.rel <- sapply(1:length(alnStart), function(x){
 	  if(refSeqList[x] == "norm."){
@@ -269,10 +252,16 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	
 	# STATISTIC
 	statList <- lapply(alnList, getAlnStat)
+
+
 	statMat <- do.call(rbind, statList)
 	statMat <- cbind(names(alnList), alnMat, alnSum, statMat, refSeqList, middleCoord.abs, alnStart.abs, alnStart.rel)
+	
+	print(names(alnList))
+	
 	colnames(statMat) <- c("alignment.id", "pattern", "subject", "aln.sum", "score", "sq.hom", "nb.mism",
 		"nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "aln.guide", "middleCoord", "aln.start.abs", "aln.start.rel")
+	
 	
 	# MERGE READMAT AND STATMAT
 	readMat.stat <- cbind(readMat, statMat)	
@@ -280,7 +269,7 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 		"nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")] <- apply(readMat.stat[, c("score", "sq.hom", "nb.mism", "nb.ins",
 			"length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")], 2, as.numeric)	
 
-	write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")), overwrite = TRUE)	
+	write.xlsx(readMat.stat, outputF, overwrite = TRUE)	
 
 	if(nrow(readMat.stat) >= 10){
 		# Density plot
@@ -304,13 +293,9 @@ getGuideAlignment <- function(inputF, guide, alnFolder, gnm = BSgenome.Hsapiens.
 	hist(readMat.stat$aln.start.rel, main = "Aln. relative start")
 	dev.off()
 	}
-
-	
-	# DELETE TMP DIR
-	unlink(dir1, recursive = T)
 }
 
-getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
+getGuideAlignment2 <- function(inputF, outputF, guide1, guide2, gnm = BSgenome.Hsapiens.UCSC.hg38::Hsapiens, binCoord = FALSE)
 {
   
   # LOAD BED FILE
@@ -322,6 +307,13 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
   }	
   inputName <- gsub(paste0(".", file_ext(inputF)), "", basename(inputF))	
   print(inputName)
+  alnFolder <- dirname(inputF)
+  
+  # USE BIN COORDINATES (DEFAULT); OTHERWISE:
+  if(!binCoord & "start.site" %in% colnames(readMat)){
+    readMat$start <- readMat$start.site
+    readMat$end <- readMat$end.site
+  }
   
   statMatList <- lapply(c(guide1, guide2), function(refSeq){
     # DEFINE REFERENCE SEQUENCE
@@ -329,7 +321,7 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     
     # REGIONS 2 SEQUENCE
     sequences <- bed2sequence(readMat, g = gnm)
-    sequences <- c(refSeq, sequences)# add refSeq
+    #sequences <- c(refSeq, sequences)# add refSeq
     
     ###########
     # ALIGNMENT
@@ -355,51 +347,14 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     alnList <- lapply(1:length(alnList.norm), function(i)
       getBestAln(alnList.norm[[i]], alnList.rev[[i]])
     )
+    names(alnList) <- paste0(inputName, "_aln", 1:length(alnList))	
     
     refSeqList <- rep("norm.", length(alnList))
     isRev <- unlist(lapply(1:length(alnList), function(i) identical(alnList[[i]], alnList.rev[[i]])))
     refSeqList[isRev] <- "rev. comp."
-    refSeqList <- refSeqList[-1]# remove refSeq alignment	
+    #refSeqList <- refSeqList[-1]# remove refSeq alignment	
     
-    # SAVE
-    dir.create(alnFolder, showWarnings = FALSE)
-    
-    dir1 <- file.path(tempdir(), "tmpDIR")
-    dir.create(dir1)# TMP DIR
-    
-    guideTMP <- tempfile(tmpdir = dir1, fileext = ".txt")
-    
-    #writePairwiseAlignments(alnList[[1]],
-    # 	file = file.path(alnFolder, "guide_aln_TMP.txt"))
-    
-    writePairwiseAlignments(alnList[[1]],
-                            file = guideTMP)
-    
-    alnList <- alnList[-1]# remove refSeq alignment
-    names(alnList) <- paste0(inputName, "_aln", 1:length(alnList))	
-    
-    tmpFiles <- sapply(1:length(alnList), function(i) tempfile(tmpdir = dir1, fileext = ".txt"))
-    
-    lapply(1:length(alnList), function(i){
-      
-      #writePairwiseAlignments(alnList[[i]],
-      #                       file = file.path(alnFolder, paste0(names(alnList)[i], "_TMP.txt")))
-      writePairwiseAlignments(alnList[[i]], file = tmpFiles[i])
-      
-    })
-    
-    
-    # GET PROPER ALIGNMENT (FIX ISSUE WITH INDEL IN FIRST / LAST POSITION)
-    #alnFiles <- list.files(alnFolder, pattern = "_TMP.txt")
-    #names(alnFiles) <- gsub("_TMP.txt", "", alnFiles)
-    
-    #alnFiles <- alnFiles[names(alnList)]# Re-order
-    
-    #alnList.str <- lapply(alnFiles, function(i)
-    #	getStrAlignment(file.path(alnFolder, i))
-    #	)
-    
-    alnList.str <- lapply(tmpFiles, getStrAlignment)
+    alnList.str <- lapply(alnList, getStrAlignment)
     
     alnMat <- do.call(rbind, alnList.str)# 1st column: test, 2nd column: ref
     
@@ -412,7 +367,7 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     #alnStart <- as.numeric(unlist(lapply(alnFiles, function(i)
     #	getStartPosition(file.path(alnFolder, i)))))
     
-    alnStart <- as.numeric(unlist(lapply(tmpFiles, function(i)
+    alnStart <- as.numeric(unlist(lapply(alnList, function(i)
       getStartPosition(i))))
     
     # RELATIVE COORDINATES
@@ -421,6 +376,8 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     #alnStart.rel <- alnStart - middleCoord
     #alnStart.abs <- alnStart + readMat$start
     
+    print(length(alnStart))
+    print(length(refSeqList))
     alnStart.rel <- sapply(1:length(alnStart), function(x){
       if(refSeqList[x] == "norm."){
         return(alnStart[x] - middleCoord[x])
@@ -429,6 +386,7 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
       }
     })
     
+
     alnStart.abs <- sapply(1:length(alnStart), function(x){
       if(refSeqList[x] == "norm."){
         return(alnStart[x] + readMat$start[x])
@@ -444,12 +402,9 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
     statMat <- cbind(names(alnList), alnMat, alnSum, statMat, refSeqList, middleCoord.abs, alnStart.abs, alnStart.rel)
     colnames(statMat) <- c("alignment.id", "pattern", "subject", "aln.sum", "score", "sq.hom", "nb.mism",
                            "nb.ins", "length.ins", "nb.del", "length.del", "aln.chr", "aln.guide", "middleCoord", "aln.start.abs", "aln.start.rel")
-    
-    # DELETE TMP DIR
-    unlink(dir1, recursive = T)
-    
     return(statMat)
   }) 
+  
   # COLUMNS 2 NUMERIC  
   statMatList <- lapply(1:length(statMatList), function(i){
     statMat.current <- data.frame(statMatList[[i]])
@@ -476,7 +431,7 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
   #                 "nb.ins", "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")] <- apply(readMat.stat[, c("score", "sq.hom", "nb.mism", "nb.ins",
   #                                                                                                                                             "length.ins", "nb.del", "length.del", "middleCoord", "aln.start.abs", "aln.start.rel")], 2, as.numeric)	
   
-  write.xlsx(readMat.stat, file.path(alnFolder, paste0(inputName, "_aln_stat.xlsx")), overwrite = TRUE)	
+  write.xlsx(readMat.stat, outputF, overwrite = TRUE)	
   
   if(nrow(readMat.stat) >= 10){
     # Density plot
@@ -524,7 +479,7 @@ getGuideAlignment2 <- function(inputF, guide1, guide2, alnFolder, gnm = BSgenome
   
 }
 
-getgRNADistance <- function(inputF, guide1, guide2){
+getgRNADistance <- function(inputF, outputF, guide1, guide2){
   
   # READ INPUT FILE
   readMat <- read.xlsx(inputF)
@@ -545,19 +500,19 @@ getgRNADistance <- function(inputF, guide1, guide2){
   readMat$gRNA.distance = distance
   readMat$gRNA.overlap = ovl
   
-  write.xlsx(readMat, inputF, overwrite = TRUE)
+  write.xlsx(readMat, outputF, overwrite = TRUE)
 }
 
-getCumulScore <- function(inputF){
+getCumulScore <- function(inputF, outputF){
   # READ INPUT FILE
   readMat <- read.xlsx(inputF)
   
   readMat$score <- readMat$score.gRNA1 + readMat$score.gRNA2
   
-  write.xlsx(readMat, inputF, overwrite = TRUE)
+  write.xlsx(readMat, outputF, overwrite = TRUE)
 }
 
-guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE)
+guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE, reorder = NULL, nbOvl = NULL, nbSignif = NULL)
 {
 	###################
 	# DISPLAY ALIGNMENT
@@ -565,15 +520,20 @@ guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
 	# READ INPUT FILE
 	readMat.stat <- read.xlsx(inputFile)
 	
-	if(OMTonly) readMat.stat <- readMat.stat[readMat.stat$group == "OMT", ]
+	if(OMTonly) readMat.stat <- readMat.stat[readMat.stat$group == "OMT", , drop = FALSE]
+	if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, , drop = FALSE]
 
 	# FILTER TOP SCORE
-	readMat.stat <- readMat.stat[order(-readMat.stat$score), ]
-	if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
-	if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score > score, ]# change score!!!
-	if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
+	readMat.stat <- readMat.stat[order(-readMat.stat$score), , drop = FALSE]
+	if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, , drop = FALSE]
+	if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score > score, , drop = FALSE]# change score!!!
+	if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, , drop = FALSE]
 
-	if(nrow(readMat.stat)>1){
+	if(!is.null(reorder)){
+	  readMat.stat <- readMat.stat[order(-readMat.stat[, reorder]), , drop = FALSE]
+	}
+
+	if(nrow(readMat.stat)>=1){
 	
 		alnDisplay <- lapply(1:nrow(readMat.stat), function(i)
 			getAlnChar(as.character(readMat.stat[i, "pattern"]),
@@ -585,9 +545,10 @@ guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
 		rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$hits), sep = ":")
 	
 		# Add refseq on top
+		ref.size <- length(unlist(strsplit(ref, split="")))
 		ref.display <- rep(NA, ncol(alnDisplay))
-		ref.display[seq(1, 46, by = 2)] <- unlist(strsplit(ref, split=""))
-		ref.display[seq(2, 46, by = 2)] <- "0"
+		ref.display[seq(1, ref.size*2, by = 2)] <- unlist(strsplit(ref, split=""))
+		ref.display[seq(2, ref.size*2, by = 2)] <- "0"
 	
 		alnDisplay <- rbind(GUIDE = ref.display, alnDisplay)
 		alnDisplay <- data.frame(alnDisplay)
@@ -629,7 +590,9 @@ guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
 		#p <- p + scale_fill_grey(na.value = "snow2")
 	
 		pdf.width = 8
-		pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+		#pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+		pdf.height = 3 + (5*nrow(alnDisplay) / 25)
+		if(pdf.height>20) pdf.height = 20
 		pdf(outputFile, width = pdf.width, height = pdf.height)
 		#png(outputFile, units="in", width=pdf.width, height=pdf.height, res=300)
 		plot(p)
@@ -638,7 +601,7 @@ guidePlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
 	}
 }
 
-guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE)
+guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE, reorder = NULL, nbOvl = NULL, nbSignif = NULL)
 {
   ###################
   # DISPLAY ALIGNMENT
@@ -647,21 +610,27 @@ guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
   readMat.stat <- read.xlsx(inputFile)
   
   if(OMTonly){
-    readMat.stat <- readMat.stat[readMat.stat$group == "OMT", ]
-    readMat.stat <- readMat.stat[grepl("gRNA1", readMat.stat$gRNA), ]
+    readMat.stat <- readMat.stat[readMat.stat$group == "OMT", , drop = FALSE]
+    readMat.stat <- readMat.stat[grepl("gRNA1", readMat.stat$gRNA), , drop = FALSE]
     if(nrow(readMat.stat) == 0){
       print("no OMT with gRNA1")
       return(NA)
     }
-  } 
+  }
+  
+  if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, , drop = FALSE]
+  
+  if(!is.null(reorder)){
+	  readMat.stat <- readMat.stat[order(-readMat.stat[, reorder]), , drop = FALSE]
+  }
   
   # FILTER TOP SCORE
-  readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA1), ]
-  if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
-  if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score.gRNA1 > score, ]# change score!!!
-  if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
+  readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA1), , drop = FALSE]
+  if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, , drop = FALSE]
+  if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score.gRNA1 > score, , drop = FALSE]# change score!!!
+  if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, , drop = FALSE]
   
-  if(nrow(readMat.stat)>1){
+  if(nrow(readMat.stat)>=1){
     
     alnDisplay <- lapply(1:nrow(readMat.stat), function(i)
       getAlnChar(as.character(readMat.stat[i, "pattern.gRNA1"]),
@@ -673,9 +642,10 @@ guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
     rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$hits), sep = ":")
     
     # Add refseq on top
+    ref.size <- length(unlist(strsplit(ref, split="")))
     ref.display <- rep(NA, ncol(alnDisplay))
-    ref.display[seq(1, 46, by = 2)] <- unlist(strsplit(ref, split=""))
-    ref.display[seq(2, 46, by = 2)] <- "0"
+    ref.display[seq(1, ref.size*2, by = 2)] <- unlist(strsplit(ref, split=""))
+    ref.display[seq(2, ref.size*2, by = 2)] <- "0"
     
     alnDisplay <- rbind(GUIDE = ref.display, alnDisplay)
     alnDisplay <- data.frame(alnDisplay)
@@ -717,7 +687,9 @@ guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
     #p <- p + scale_fill_grey(na.value = "snow2")
     
     pdf.width = 8
-    pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+    #pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+    pdf.height = 3 + (5*nrow(alnDisplay) / 25)
+    if(pdf.height>20) pdf.height = 20
     pdf(outputFile, width = pdf.width, height = pdf.height)
     #png(outputFile, units="in", width=pdf.width, height=pdf.height, res=300)
     plot(p)
@@ -726,7 +698,7 @@ guidePlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
   }
 }
 
-guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE)
+guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref = NULL, OMTonly = FALSE, reorder = NULL, nbOvl = NULL, nbSignif = NULL)
 {
   ###################
   # DISPLAY ALIGNMENT
@@ -735,21 +707,27 @@ guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
   readMat.stat <- read.xlsx(inputFile)
   
   if(OMTonly){
-    readMat.stat <- readMat.stat[readMat.stat$group == "OMT", ]
-    readMat.stat <- readMat.stat[grepl("gRNA2", readMat.stat$gRNA), ]
+    readMat.stat <- readMat.stat[readMat.stat$group == "OMT", , drop = FALSE]
+    readMat.stat <- readMat.stat[grepl("gRNA2", readMat.stat$gRNA), , drop = FALSE]
     if(nrow(readMat.stat) == 0){
       print("no OMT with gRNA2")
       return(NA)
     }
   } 
   
-  # FILTER TOP SCORE
-  readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA2), ]
-  if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
-  if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score.gRNA2 > score, ]# change score!!!
-  if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
+  if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, , drop = FALSE]
   
-  if(nrow(readMat.stat)>1){
+  if(!is.null(reorder)){
+	  readMat.stat <- readMat.stat[order(-readMat.stat[, reorder]), , drop = FALSE]
+  }
+  
+  # FILTER TOP SCORE
+  readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA2), , drop = FALSE]
+  if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, , drop = FALSE]
+  if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score.gRNA2 > score, , drop = FALSE]# change score!!!
+  if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, , drop = FALSE]
+  
+  if(nrow(readMat.stat)>=1){
     
     alnDisplay <- lapply(1:nrow(readMat.stat), function(i)
       getAlnChar(as.character(readMat.stat[i, "pattern.gRNA2"]),
@@ -761,9 +739,10 @@ guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
     rownames(alnDisplay) <- paste(as.character(readMat.stat$chromosome), as.character(readMat.stat$start), as.character(readMat.stat$hits), sep = ":")
     
     # Add refseq on top
+    ref.size <- length(unlist(strsplit(ref, split="")))
     ref.display <- rep(NA, ncol(alnDisplay))
-    ref.display[seq(1, 46, by = 2)] <- unlist(strsplit(ref, split=""))
-    ref.display[seq(2, 46, by = 2)] <- "0"
+    ref.display[seq(1, ref.size*2, by = 2)] <- unlist(strsplit(ref, split=""))
+    ref.display[seq(2, ref.size*2, by = 2)] <- "0"
     
     alnDisplay <- rbind(GUIDE = ref.display, alnDisplay)
     alnDisplay <- data.frame(alnDisplay)
@@ -805,7 +784,9 @@ guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
     #p <- p + scale_fill_grey(na.value = "snow2")
     
     pdf.width = 8
-    pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+    #pdf.height = max(8*nrow(alnDisplay) / 25, 8)
+    pdf.height = 3 + (5*nrow(alnDisplay) / 25)
+    if(pdf.height>20) pdf.height = 20
     pdf(outputFile, width = pdf.width, height = pdf.height)
     #png(outputFile, units="in", width=pdf.width, height=pdf.height, res=300)
     plot(p)
@@ -814,16 +795,20 @@ guidePlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NU
   }
 }
 
-logoPlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref)
+logoPlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref, nbOvl = NULL, nbSignif = NULL)
 {
 	# READ INPUT FILE
 	readMat.stat <- read.xlsx(inputFile)
 
+	if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, ]
+	
 	# FILTER TOP SCORE
 	readMat.stat <- readMat.stat[order(-readMat.stat$score), ]
 	if(!is.null(hits)) readMat.stat <- readMat.stat[readMat.stat$hits > hits, ]
 	if(!is.null(score)) readMat.stat <- readMat.stat[readMat.stat$score > score, ]# change score!!!
 	if(!is.null(pv)) readMat.stat <- readMat.stat[readMat.stat$adj.pvalue < pv, ]
+	
+	print(head(readMat.stat))
 	
 	if(nrow(readMat.stat)>1){
 		alnDisplay <- lapply(1:nrow(readMat.stat), function(i)
@@ -838,11 +823,17 @@ logoPlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL
 	alnDisplay.sub <- alnDisplay[, seq(1, ncol(alnDisplay), by = 2)]
 	alnDisplay.ins <- alnDisplay[, seq(2, ncol(alnDisplay), by = 2)]
 
-
 	alnDisplay.sub[grep("-", alnDisplay.sub)] <- "d"# deletion
+	alnDisplay.sub[is.na(alnDisplay.sub)] <- "d"# deletion
 
 	logoIn <- apply(alnDisplay.sub, 1, paste, collapse = "")
 	#logoIn <- gsub("-", "", logoIn)
+	
+	#print(which(nchar(logoIn) == 28))
+	#print(logoIn[nchar(logoIn) == 28])
+	
+	size.max <- max(nchar(logoIn))
+	logoIn <- logoIn[nchar(logoIn) == size.max]
 
 	p <- ggplot() +
 		geom_logo(logoIn, method='p', 
@@ -859,10 +850,12 @@ logoPlot <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL
 
 }
 
-logoPlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref)
+logoPlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref, nbOvl = NULL, nbSignif = NULL)
 {
   # READ INPUT FILE
   readMat.stat <- read.xlsx(inputFile)
+  
+  if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, ]
   
   # FILTER TOP SCORE
   readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA1), ]
@@ -885,9 +878,14 @@ logoPlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
     
     
     alnDisplay.sub[grep("-", alnDisplay.sub)] <- "d"# deletion
-    
+    alnDisplay.sub[is.na(alnDisplay.sub)] <- "d"# deletion
+
+
     logoIn <- apply(alnDisplay.sub, 1, paste, collapse = "")
     #logoIn <- gsub("-", "", logoIn)
+    
+    size.max <- max(nchar(logoIn))
+	logoIn <- logoIn[nchar(logoIn) == size.max]
     
     p <- ggplot() +
       geom_logo(logoIn, method='p', 
@@ -904,10 +902,12 @@ logoPlot1 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
   
 }
 
-logoPlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref)
+logoPlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NULL, ref, nbOvl = NULL, nbSignif = NULL)
 {
   # READ INPUT FILE
   readMat.stat <- read.xlsx(inputFile)
+  
+  if(!is.null(nbOvl) & !is.null(nbSignif)) readMat.stat <- readMat.stat[readMat.stat$NB.OVL >= nbOvl & readMat.stat$NB.SIGNIF >= nbSignif, ]
   
   # FILTER TOP SCORE
   readMat.stat <- readMat.stat[order(-readMat.stat$score.gRNA2), ]
@@ -930,9 +930,13 @@ logoPlot2 <- function(inputFile, outputFile, hits = NULL, score = NULL, pv = NUL
     
     
     alnDisplay.sub[grep("-", alnDisplay.sub)] <- "d"# deletion
+    alnDisplay.sub[is.na(alnDisplay.sub)] <- "d"# deletion
     
     logoIn <- apply(alnDisplay.sub, 1, paste, collapse = "")
     #logoIn <- gsub("-", "", logoIn)
+    
+    size.max <- max(nchar(logoIn))
+	logoIn <- logoIn[nchar(logoIn) == size.max]
     
     p <- ggplot() +
       geom_logo(logoIn, method='p', 

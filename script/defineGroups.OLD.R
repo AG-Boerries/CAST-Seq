@@ -30,7 +30,7 @@ getONidx <- function(realM, otsF){
                                      seqnames.field = "V1", start.field = "V2", end.field = "V3",
                                      keep.extra.columns = FALSE, ignore.strand = TRUE)
   realM.gr <- makeGRangesFromDataFrame(realM,
-                                       seqnames.field = "chromosome", start.field = "start.site", end.field = "end.site",
+                                       seqnames.field = "chromosome", start.field = "start", end.field = "end",
                                        keep.extra.columns = FALSE, ignore.strand = TRUE)
   
   gr.ovl <- findOverlaps(query = ots.gr, subject = realM.gr, type = "any", maxgap = 0)
@@ -41,7 +41,7 @@ getONidx <- function(realM, otsF){
   return(isON)
 }
 
-assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
+assignGroups <- function(realF, rdF, otsF, cutoff)
 {
 	ots <- read.delim(otsF, header = FALSE)
 	print(realF)
@@ -69,7 +69,7 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
 	
 	if(nrow(realM) > 10){
 	  # plot score.cutoff (REAL)
-	  pdf(gsub(".xlsx", "_score_cutoff.pdf", outputF))
+	  pdf(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF))
 	  #png(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.png", realF), units="px", width=1600, height=1600, res=300)
 	  plot(density(realM[, "score"]), main = paste0("Cutoff score: ", score.cutoff), xlab = "guide alignment score")
 	  abline(v=score.cutoff, col="black", lwd=3)
@@ -87,7 +87,7 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
 	  p <- p + theme_bw(base_size = 16)
 	  p <- p + xlab("substring length (bp)")
 	  p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
-	  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.pdf", realF),
+	  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF),
 	         width = 6, height = 6)
 	  
 	}
@@ -113,12 +113,12 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
   	p <- p + theme_bw(base_size = 16)
   	p <- p + xlab("substring length (bp)")
   	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-  	ggsave(plot = p, filename = gsub(".xlsx", "_flanking_cutoff.pdf", outputF),
+  	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
   	       width = 6, height = 6)
 	}
 	
 	# plot score.cutoff (RANDOM)
-	pdf(gsub(".xlsx", "_score_cutoff.pdf", rdF))
+	pdf(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF))
 	#png(gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.png", rdF), units="px", width=1600, height=1600, res=300)
 	plot(density(rdM[, "score"]), main = paste0("Cutoff score: ", score.cutoff), xlab = "guide alignment score")
 	abline(v=score.cutoff, col="black", lwd=3)
@@ -135,7 +135,7 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
 	p <- p + theme_bw(base_size = 16)
 	p <- p + xlab("guide alignment score")
 	p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
-	ggsave(plot = p, filename = gsub(".xlsx", "_score_cutoff.pdf", rdF),
+	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF),
 	       width = 6, height = 6)
 	
 	
@@ -157,7 +157,7 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
 	p <- p + theme_bw(base_size = 16)
 	p <- p + xlab("substring length (bp)")
 	p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-	ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+	ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
 	       width = 6, height = 6)
 	
 	
@@ -191,10 +191,10 @@ assignGroups <- function(realF, rdF, outputF, otsF, cutoff)
 	realM$HMT.adj.pvalue <- flanking.adj.pv
 	
 	
-	write.xlsx(realM, outputF, row.names = FALSE, overwrite = TRUE)	
+	write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
-assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
+assignGroups2 <- function(realF, rdF, otsF, cutoff)
 {
   ots <- read.delim(otsF, header = FALSE)
   print(realF)
@@ -212,7 +212,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   score.cutoff1 <- sort(rdM[, "score.gRNA1"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
   score.cutoff2 <- sort(rdM[, "score.gRNA2"], decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# score of the top XX%
   
-  #score <- sapply(1:nrow(realM), function(x) max(c(realM[x, "score.gRNA1"], realM[x, "score.gRNA2"])))
+  score <- sapply(1:nrow(realM), function(x) max(c(realM[x, "score.gRNA1"], realM[x, "score.gRNA2"])))
   
   #flanking.cutoff <- sort(rdM.bf, decreasing = TRUE)[floor(nrow(rdM) * cutoff)]# flanking length of the top XX%
   flanking.cutoff <- 25
@@ -240,7 +240,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
            width = 6, height = 6)
     
     ggmat <- data.frame(dist = realM[, "score.gRNA2"])
@@ -254,7 +254,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
            width = 6, height = 6)
     
   }
@@ -272,7 +272,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
            width = 6, height = 6)
   }
   
@@ -288,7 +288,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("guide alignment score")
   p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
          width = 6, height = 6)
   
   ggmat <- data.frame(dist = rdM[, "score.gRNA2"])
@@ -302,7 +302,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("guide alignment score")
   p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
          width = 6, height = 6)
   
   
@@ -318,7 +318,7 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("substring length (bp)")
   p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
          width = 6, height = 6)
   
   
@@ -328,11 +328,6 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   gRNA <- sapply(1:length(score.pv), function(x){
     grnas <- c("gRNA1", "gRNA2")
     return(toString(grnas[which(c(score.pv1[x], score.pv2[x]) == score.pv[x])]))
-  })
-  
-  scores2 <- cbind(realM[, "score.gRNA1"], realM[, "score.gRNA2"])
-  score <- sapply(1:length(score.pv), function(x){
-    return(max(scores2[x, which(c(score.pv1[x], score.pv2[x]) == score.pv[x])]))
   })
   
   #
@@ -366,10 +361,10 @@ assignGroups2 <- function(realF, rdF, outputF, otsF, cutoff)
   realM$HMT.pvalue <- flanking.pv
   realM$HMT.adj.pvalue <- flanking.adj.pv
   
-  write.xlsx(realM, outputF, row.names = FALSE, overwrite = TRUE)	
+  write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
-assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
+assignGroupsDoubleNickase <- function(realF, rdF, otsF, cutoff)
 {
   ots <- read.delim(otsF, header = FALSE)
   print(realF)
@@ -417,7 +412,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", realF),
            width = 6, height = 6)
     
     ggmat <- data.frame(dist = realM[, "score.gRNA2"])
@@ -431,7 +426,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", realF),
            width = 6, height = 6)
     
     ggmat <- data.frame(dist = realM[, "score"])
@@ -445,7 +440,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", realF),
            width = 6, height = 6)
     
   }
@@ -463,7 +458,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
            width = 6, height = 6)
   }
   
@@ -479,7 +474,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("guide alignment score")
   p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff1))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA1.pdf", rdF),
          width = 6, height = 6)
   
   ggmat <- data.frame(dist = rdM[, "score.gRNA2"])
@@ -493,7 +488,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("guide alignment score")
   p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff2))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.gRNA2.pdf", rdF),
          width = 6, height = 6)
   
   ggmat <- data.frame(dist = rdM[, "score"])
@@ -507,7 +502,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("guide alignment score")
   p <- p + ggtitle(paste0("Cutoff score: ", score.cutoff))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_score_cutoff.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_score_cutoff.pdf", rdF),
          width = 6, height = 6)
   
   
@@ -523,7 +518,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("substring length (bp)")
   p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
          width = 6, height = 6)
   
   which_signif <- sapply(1:length(score.pv), function(x){
@@ -571,7 +566,7 @@ assignGroupsDoubleNickase <- function(realF, rdF, outputF, otsF, cutoff)
   realM$HMT.pvalue <- flanking.pv
   realM$HMT.adj.pvalue <- flanking.adj.pv
   
-  write.xlsx(realM, outputF, row.names = FALSE, overwrite = TRUE)	
+  write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
 }
 
 assignGroups_2OT <- function(realF, rdF, otsF, cutoff)
@@ -760,7 +755,7 @@ assignGroupsTALENOLD <- function(realF, rdF, otsF, cutoff)
 
 }
 
-assignGroupsTALEN <- function(realF, rdF, outF, otsF, cutoff)
+assignGroupsTALEN <- function(realF, rdF, otsF, cutoff)
 {
   ots <- read.delim(otsF, header = FALSE)
   
@@ -797,7 +792,7 @@ assignGroupsTALEN <- function(realF, rdF, outF, otsF, cutoff)
   
   mygroups3 <- rep(NA, nrow(realM))
   ld.idx <- isLargeDel(realM, ots)
-  if(length(ld.idx) != 0) mygroups3[ld.idx] <- "yes"
+  if(!is.na(ld.idx)) mygroups3[ld.idx] <- "yes"
   
   realM$group <- mygroups
   
@@ -809,7 +804,7 @@ assignGroupsTALEN <- function(realF, rdF, outF, otsF, cutoff)
   realM$HMT.pvalue <- flanking.pv
   realM$HMT.adj.pvalue <- flanking.adj.pv
   
-  write.xlsx(realM, outF, row.names = FALSE, overwrite = TRUE)	
+  write.xlsx(realM, gsub(".xlsx", "_GROUP.xlsx", realF), row.names = FALSE, overwrite = TRUE)	
   
   if(sum(realM.bf <= 100) > 10){
     # flanking plot (REAL)
@@ -830,7 +825,7 @@ assignGroupsTALEN <- function(realF, rdF, outF, otsF, cutoff)
     p <- p + theme_bw(base_size = 16)
     p <- p + xlab("substring length (bp)")
     p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-    ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
+    ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", realF),
            width = 6, height = 6)
   }
   
@@ -852,7 +847,7 @@ assignGroupsTALEN <- function(realF, rdF, outF, otsF, cutoff)
   p <- p + theme_bw(base_size = 16)
   p <- p + xlab("substring length (bp)")
   p <- p + ggtitle(paste0("Cutoff length: ", flanking.cutoff))
-  ggsave(plot = p, filename = gsub("_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
+  ggsave(plot = p, filename = gsub("_aln_stat_FLANK.xlsx", "_flanking_cutoff.pdf", rdF),
          width = 6, height = 6)
   
 }
@@ -911,25 +906,22 @@ groupSummary <- function(inputF, outputF, hits = NULL, score = NULL, pv = NULL)
 
 hitsBarplot <- function(inputF, pv = NULL, top = NULL, showNBS = TRUE, log = TRUE, outName = NULL){
   realM <- read.xlsx(inputF, sheet = 1)
-
   if(!is.null(pv)) realM <- realM[realM$adj.pvalue < pv | !is.na(realM$is.ON), ]
   if(!showNBS) realM <- realM[realM$group != "NBS", ]
   if(!is.null(top)){
     realM <- realM[order(-realM$hits), ]
     if(nrow(realM) > top) realM <- realM[1:top, ]
   }
-
+  
+  
   ggmat <- realM[, c("hits", "group")]
   ggmat$group[realM$group == "OMT" & realM$is.HMT == "yes"] <- "OMT/HMT"
-  ggmat$group[realM$is.ON == "yes"] <- "ON"
+  ggmat$group[1] <- "ON"
   ggmat$group <- factor(ggmat$group, levels = c("ON", "OMT", "HMT", "OMT/HMT", "NBS"))
-  
-  print(dim(ggmat))
   
   ggmat$Name <- paste(realM$chromosome, realM$start, realM$hits, sep = ":")
   ggmat$Name <- factor(ggmat$Name, levels = ggmat$Name[order(-ggmat$hits)])
   ggmat <- ggmat[order(ggmat$Name), ]
-
   
   p <- ggplot(data=ggmat, aes(x=Name, y=hits, fill = group)) +
     geom_bar(stat="identity", width = 0.75)

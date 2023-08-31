@@ -64,7 +64,7 @@ bedCoverage <- function(functionstring="bedtools genomecov", bed, bed.cov, opt.s
 
 
 
-getRandomBed <- function(functionstring="bedtools random", l, n, outFile, opt.string="")
+getRandomBed <- function(functionstring="bedtools random -seed 4565745", l, n, outFile, opt.string="")
 {
 	options(scipen =99)
 	

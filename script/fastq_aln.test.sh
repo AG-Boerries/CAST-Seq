@@ -87,15 +87,15 @@ pair2=${fastqDir}/${fname}${r2}
 	
 	
 ################# BBMERGE PAIRING ###################
-echo "START BBMERGE PAIRING" > ${logFile}
-bbmerge.sh -Xmx80g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
-bbmerge.sh -Xmx80g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
+#echo "START BBMERGE PAIRING" > ${logFile}
+#bbmerge.sh -Xmx80g in=${pair1} outa=${outDir}${fname}_adapters_R1.fa
+#bbmerge.sh -Xmx80g in=${pair2} outa=${outDir}${fname}_adapters_R2.fa
 	
 #bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}.assembled.fastq.gz outu=${outDir}${fname}.unassembled.R2.fastq outu2=${outDir}${fname}.unassembled.R1.fastq adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa ecct extend2=20 iterations=5
 #bbmerge-auto.sh in=${pair2} in2=${pair1} out=${outDir}${fname}_merged.fastq.gz outu=${outDir}${fname}_UNmerged_R2.fastq.gz outu2=${outDir}${fname}_UNmerged_R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
-bbmerge.sh -Xmx80g in=${pair2} in2=${pair1} out=${outDir}${fname}_assembled.fastq.gz outu=${outDir}${fname}_unassembled.R2.fastq.gz outu2=${outDir}${fname}_unassembled.R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
+#bbmerge.sh -Xmx80g in=${pair2} in2=${pair1} out=${outDir}${fname}_assembled.fastq.gz outu=${outDir}${fname}_unassembled.R2.fastq.gz outu2=${outDir}${fname}_unassembled.R1.fastq.gz adapter1=${outDir}${fname}_adapters_R2.fa adapter2=${outDir}${fname}_adapters_R1.fa rem k=62 extend2=50 ecct threads=${CPU}
 	
-cat ${outDir}${fname}_assembled.fastq.gz ${outDir}${fname}_unassembled.R2.fastq.gz > ${outDir}${fname}_merged.fastq.gz
+#cat ${outDir}${fname}_assembled.fastq.gz ${outDir}${fname}_unassembled.R2.fastq.gz > ${outDir}${fname}_merged.fastq.gz
 #cp ${outDir}${fname}_unassembled.R1.fastq.gz ${outDir}${fname}_merged.fastq.gz
 	
 	
@@ -114,15 +114,17 @@ cat ${outDir}${fname}_assembled.fastq.gz ${outDir}${fname}_unassembled.R2.fastq.
 #gzip ${outDir}${fname}.notCombined_2.fastq
 	
 echo "_R1_001.fastq.gz: " >> ${logFile}
-echo $(gzcat ${pair1}|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${pair1}|wc -l)/4|bc >> ${logFile}
 echo "_R2_001.fastq.gz: " >> ${logFile}
-echo $(gzcat ${pair2}|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${pair2}|wc -l)/4|bc >> ${logFile}
 	
-echo "_assembled.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_assembled.fastq.gz|wc -l)/4|bc >> ${logFile}
+#echo "_assembled.fastq.gz: " >> ${logFile}
+#echo $(gzcat ${outDir}${fname}_assembled.fastq.gz|wc -l)/4|bc >> ${logFile}
 	
-echo "_merged.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
+#echo "_merged.fastq.gz: " >> ${logFile}
+#echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
+	
+	
 	
 	
 ################# FILTER OUT READS > 300bp ################### 
@@ -134,21 +136,42 @@ echo $(gzcat ${outDir}${fname}_merged.fastq.gz|wc -l)/4|bc >> ${logFile}
 ############# FILTERING ###################
 echo "START FILTERING" >> ${logFile}
 # filter 1: find reads that contain the CCR5 sequence before the cut site
-bbduk.sh -Xmx16g in=${outDir}${fname}_merged.fastq.gz ref=${pos} outm=${outDir}${fname}_pos.fastq.gz outu=${outDir}${fname}_pos_NOmatch.fastq.gz k=25 mm=f edist=2 ow=t rcomp=f
+
+# R1
+bbduk.sh -Xmx16g in=${pair1} ref=${pos} outm=${outDir}${fname}_pos_R1.fastq.gz outu=${outDir}${fname}_pos_NOmatch_R1.fastq.gz k=25 mm=f edist=2 ow=t rcomp=t
+gzip -dc ${outDir}${fname}_pos_R1.fastq.gz > ${outDir}${fname}_pos_R1.fastq
+gzip -dc ${pair2} > ${outDir}${fname}_R2.fastq
+fastq_pair ${outDir}${fname}_pos_R1.fastq ${outDir}${fname}_R2.fastq
+gzip ${outDir}${fname}_R2.fastq.paired.fq
+
+echo "_pos_R1.fastq.gz: " >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_pos_R1.fastq.gz|wc -l)/4|bc >> ${logFile}
+
+echo "_R2.fastq.paired.fq.gz: " >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_R2.fastq.paired.fq.gz|wc -l)/4|bc >> ${logFile}
+
+# R2
+bbduk.sh -Xmx16g in=${pair2} ref=${pos} outm=${outDir}${fname}_pos_R2.fastq.gz outu=${outDir}${fname}_pos_NOmatch_R2.fastq.gz k=25 mm=f edist=2 ow=t rcomp=t
+	
+echo "_pos_R2.fastq.gz: " >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_pos_R2.fastq.gz|wc -l)/4|bc >> ${logFile}	
+	
+cat ${outDir}${fname}_pos_R2.fastq.gz ${outDir}${fname}_R2.fastq.paired.fq.gz > ${outDir}${fname}_pos.fastq.gz
+	
 	
 # USE READS THAT DID NOT PASS THE FILTER
 #mv ${outDir}${fname}_pos.fastq.gz ${outDir}${fname}_pos.SAVE.fastq.gz
 #mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
 
 echo "_pos.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_pos.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 # filter 2: eliminate CCR2 aspecifics
 #mv ${outDir}${fname}_pos_NOmatch.fastq.gz ${outDir}${fname}_pos.fastq.gz
 bbduk.sh -Xmx16g in=${outDir}${fname}_pos.fastq.gz ref=${mispriming} out=${outDir}${fname}_Filt2.fastq.gz k=50 mm=f edist=0 ow=t rcomp=f
 
 echo "_Filt2.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_Filt2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 ### check filtering
 #bbduk.sh in=${outDir}${fname}_Filt2.fastq ref=${dataDir}SeqCCR5pos.fa k=25 mm=f edist=2 ow=t    
@@ -160,13 +183,13 @@ echo "START TRIMMING" >> ${logFile}
 bbduk.sh -Xmx16g in=${outDir}${fname}_Filt2.fastq.gz ref=${linker} out=${outDir}${fname}_trim1.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20 rcomp=f
 
 echo "_trim1.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_trim1.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 # trimming of the adapters
 bbduk.sh -Xmx16g in=${outDir}${fname}_trim1.fastq.gz ref=${adapters} out=${outDir}${fname}_trim2.fastq.gz k=20 mm=f edist=2 ow=t ktrim=r ml=20
 
 echo "_trim2.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
+echo $(gzip -dc ${outDir}${fname}_trim2.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 ############
 # CRISPRESSO
@@ -184,12 +207,7 @@ bbduk.sh -Xmx16g in=${outDir}${fname}_trim2.fastq.gz ref=${neg} outm=${outDir}${
 bbduk.sh -Xmx16g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=30
 
 echo "_trim3.fastq.gz: " >> ${logFile}
-echo $(gzcat ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
-
-
-#trimming of the CCR5 sequence before the cut site (soft)
-bbduk.sh -Xmx16g in=${outDir}${fname}_trim2.fastq.gz ref=${pos} out=${outDir}${fname}_trim3_soft.fastq.gz k=25 mm=f edist=2 ow=t ktrim=l rcomp=f ml=1
-
+echo $(gzip -dc ${outDir}${fname}_trim3.fastq.gz|wc -l)/4|bc >> ${logFile}
 
 ######### FINAL filter ############ 
 echo "START FINAL FILTER" >> ${logFile}
@@ -228,7 +246,6 @@ rm ${outDir}${fname}_Alignment.bam
 
 #### sort
 samtools sort ${outDir}${fname}_mapqfiltered.bam > ${outDir}${fname}_AlignmentSort.bam
-#samtools sort ${outDir}${fname}_Alignment.bam > ${outDir}${fname}_AlignmentSort.bam
 rm ${outDir}${fname}_mapqfiltered.bam
 	
 echo "_AlignmentSort.bam: " >> ${logFile}

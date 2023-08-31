@@ -161,9 +161,9 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 		width = df.final$end - df.final$start)
 
 	# HYPERG TEST
-	fhList <- lapply(1:nrow(df.final), function(i){
+	fhList <- mclapply(1:nrow(df.final), function(i){
 		doFisher(df.final[i, "read"], nbTest, df.final[i, "read.ctl"], nbRef)
-		})
+		}, mc.cores = NBCPU)
 	fhList <- do.call(rbind, fhList)
 
 	df.final <- cbind(df.final, fhList)
@@ -182,7 +182,7 @@ doEnrichment <- function(testFile, refFile, nbTest, nbRef, size, chrFile)
 	df.final <- addNormalizeCount(m = df.final, libSize = nbTest)
 	
 	# SAVE
-	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
+	outName <- paste0(gsub("_hits.bed$", "", testFile), "_w", size, ".xlsx")
 	write.xlsx(df.final, outName, overwrite = TRUE)
 }
 
@@ -210,9 +210,9 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 	df.final <- cbind(df.final, width = df.final$end - df.final$start)
 
 	# HYPERG TEST
-	fhList <- lapply(1:nrow(df.final), function(i)
+	fhList <- mclapply(1:nrow(df.final), function(i){
 		doFisher(df.final[i, "read"], nbTest, df.final[i, "read.ctl"], nbRef)
-		)
+		}, mc.cores = NBCPU)
 	fhList <- do.call(rbind, fhList)
 
 	df.final <- cbind(df.final, fhList)
@@ -227,7 +227,7 @@ doEnrichmentDefault <- function(testFile, nbTest, size)
 	df.final <- df.final[order(df.final$pvalue, -df.final$OddRatio), ]
 
 	# SAVE
-	outName <- paste0(gsub("_Alignment_hits.bed$", "", testFile), "_w", size, ".xlsx")
+	outName <- paste0(gsub("_hits.bed$", "", testFile), "_w", size, ".xlsx")
 	write.xlsx(df.final, outName, overwrite = TRUE)
 }
 

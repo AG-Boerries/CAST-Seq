@@ -19,7 +19,7 @@
 
 getRevComp <- function(x) as.character(reverseComplement(DNAString(x)))
 
-addFlanking <- function(inputFile, outputFile, otBed, size, binCoord = FALSE)
+addFlanking <- function(inputFile, otBed, size)
 {
 	# inputFile: alignment output (.xlsx)
 	# flankFile: bed file containing up-/downstream flank locations
@@ -46,13 +46,7 @@ addFlanking <- function(inputFile, outputFile, otBed, size, binCoord = FALSE)
 	  colnames(readMat) <- c("chromosome", "start", "end", "ID_read", "size", "strand")
 	}else{
 	  readMat <- read.xlsx(inputFile)
-	}
-	
-	# USE SITE COORDINATES (DEFAULT):
-	if(!binCoord & "start.site" %in% colnames(readMat)){
-	  readMat$start <- readMat$start.site
-	  readMat$end <- readMat$end.site
-	}
+	}	
 	
 	sequences <- bed2sequence(readMat, g = GNM)
 	sequences.rev <- mclapply(sequences, getRevComp, mc.cores = NBCPU)
@@ -77,11 +71,11 @@ addFlanking <- function(inputFile, outputFile, otBed, size, binCoord = FALSE)
 						  flank.rev = unlist(sq.rev.match),
 						  flank.rev.length = length.rev		  
 						  ) 
-	write.xlsx(cbind(readMat, flankSm), outputFile, overwrite = TRUE)
+	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile), overwrite = TRUE)
 }
 
 
-addFlankingFromSq <- function(inputFile, outputFile, hom.sq, hom.sq2 = NULL, binCoord = FALSE)
+addFlankingFromSq <- function(inputFile, hom.sq, hom.sq2 = NULL)
 {
 	# inputFile: alignment output (.xlsx)
 	# flankFile: bed file containing up-/downstream flank locations
@@ -95,12 +89,6 @@ addFlankingFromSq <- function(inputFile, outputFile, hom.sq, hom.sq2 = NULL, bin
   }else{
     readMat <- read.xlsx(inputFile)
   }	
-  
-  # USE SITE COORDINATES (DEFAULT):
-  if(!binCoord & "start.site" %in% colnames(readMat)){
-    readMat$start <- readMat$start.site
-    readMat$end <- readMat$end.site
-  }
   
 	sequences <- bed2sequence(readMat, g = GNM)
 	sequences.rev <- mclapply(sequences, getRevComp, mc.cores = NBCPU)
@@ -151,7 +139,7 @@ addFlankingFromSq <- function(inputFile, outputFile, hom.sq, hom.sq2 = NULL, bin
 		flankSm <- cbind(flankSm, flankSm2)					  
 	}					  
 						  
-	write.xlsx(cbind(readMat, flankSm), outputFile, overwrite = TRUE)
+	write.xlsx(cbind(readMat, flankSm), gsub(".xlsx", "_FLANK.xlsx", inputFile), overwrite = TRUE)
 }
 
 ############################################

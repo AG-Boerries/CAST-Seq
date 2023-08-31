@@ -3,17 +3,23 @@ library(openxlsx)
 library(ggridges)
 
 
-sample.current <- "Cas9"
+inDir <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-624277467/EMD")
+outDir <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-624277467/EMD/coverage")
+dir.create(outDir)
 
-#setwd(file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-576086333/EMD/", sample.current))
-#setwd(file.path("~/tmp/EMD_cluster/EMD/", sample.current))
-setwd(file.path("~/Research/CASTSeq/test/coverage_ridge/", sample.current))
+inDir <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/")
+outDir <- file.path("~/cluster/cluster/CASTSeq/pipelineGit/samples/GENEWIZ_90-556214738/EMD/coverage")
+dir.create(outDir)
+
+sample.current <- "EMD3_new"
+
+setwd(file.path(inDir, sample.current))
 
 
 binFiles <- list.files(pattern = "_10kb_bins.xlsx", recursive = TRUE, full.names = TRUE)
 names(binFiles) <- gsub("_10kb_bins.xlsx", "", basename(binFiles))
-#names(binFiles) <- gsub("EMD-sample", "", names(binFiles))
-
+#names(binFiles) <- gsub("MEG01_EMD-", "", names(binFiles))
+names(binFiles) <- gsub("EMD-sample", "S", names(binFiles))
 binList <- lapply(binFiles, read.xlsx, sheet = 1)
 
 ggList <- lapply(1:length(binList), function(j){
@@ -26,7 +32,7 @@ ggList <- lapply(1:length(binList), function(j){
   ggmat <- data.frame(start = rep(binMat$start, 2),
                       count = c(count.pos, count.neg),
                       strand = c(rep("POS", length(count.pos)), rep("NEG", length(count.neg))),
-                      event = c(rep("DEL", length(count.pos)), rep("INV", length(count.neg))),
+                      event = c(rep("DEL", length(count.pos)), rep("INV", length(count.neg))),# POS = DEL, NEG = INV
                       SAMPLE = names(binList)[j]
                       )
   
@@ -35,8 +41,8 @@ ggList <- lapply(1:length(binList), function(j){
 
 ggmat <- do.call(rbind, ggList)
 
-#mylevels <- unlist(lapply(c(9:10), function(i) paste0(i , c("-1", "-2"))))
-mylevels <- c("Cas9-KO-G3", "DF-KO-G3")
+mylevels <- unlist(lapply(c(1:100), function(i) paste0("S", i , c("-1", "-2"))))
+#mylevels <- c("Cas9-KO-G3", "DF-KO-G3")
 ggmat$SAMPLE <- factor(ggmat$SAMPLE, levels = mylevels)
 ggmat <- ggmat[!is.na(ggmat$SAMPLE), ]
 
@@ -55,7 +61,7 @@ p <- p + scale_color_manual(values=c(POS = rgb(245, 171, 173, maxColorValue = 25
 
 myheight <- 2
 myheight <-myheight +  0.75*length(binList)
-ggsave(plot = p, filename = paste0("~/tmp/",sample.current ,"_strand.pdf"), width = 5, height = myheight)
+ggsave(plot = p, filename = file.path(outDir, paste0(sample.current ,"_strand.pdf")), width = 5, height = myheight)
 
 # EVENT COLOR
 p <- ggplot(ggmat, aes(x = start, y = count, fill = event, color = event))
@@ -70,7 +76,11 @@ p <- p + scale_color_manual(values=c(DEL = "orange2",
 p <- p + scale_fill_manual(values=c(DEL = "orange2",
                                     INV = "orchid2"))
 
-ggsave(plot = p, filename = paste0("~/tmp/",sample.current ,"_event.pdf"), width = 5, height = myheight)
+ggsave(plot = p, filename = file.path(outDir, paste0(sample.current ,"_event.pdf")), width = 5, height = myheight)
+
+
+
+
 
 
 

@@ -16,23 +16,6 @@ bed2sequence <- function(bedMat, g=BSgenome.Hsapiens.UCSC.hg38::Hsapiens)
 	return(sqList)
 }
 
-bed2sequence.hg19 <- function(bedMat)
-{
-	require(BSgenome.Hsapiens.UCSC.hg19)
-	sqList <- apply(bedMat, 1, function(i)
-		getSeq(BSgenome.Hsapiens.UCSC.hg19::Hsapiens, i[1], as.integer(i[2]), as.integer(i[3]), as.character = TRUE)
-		)
-	return(sqList)
-}
-
-bed2sequence.Mmul8 <- function(bedMat)
-{
-	require(BSgenome.Mmulatta.UCSC.rheMac8)
-	sqList <- apply(bedMat, 1, function(i)
-		getSeq(BSgenome.Mmulatta.UCSC.rheMac8::Mmulatta, i[1], as.integer(i[2]), as.integer(i[3]), as.character = TRUE)
-		)
-	return(sqList)
-}
 
 
 ############################################

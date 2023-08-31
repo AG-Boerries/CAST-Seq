@@ -37,107 +37,88 @@ nbReadBED <- function(inFile){
 }
 
 
-countReads <- function(fastqFolder, sampleFolder, testSample, utSample){
-  # R1
-  f1 <- file.path(fastqFolder, paste0(testSample, "_R1_001.fastq.gz"))
-  if(!file.exists(f1)) f1 <- file.path(fastqFolder, paste0(testSample, "_1.fq.gz"))
-  f1.UT <- file.path(fastqFolder, paste0(utSample, "_R1_001.fastq.gz"))
-  if(!file.exists(f1.UT)) f1.UT <- file.path(fastqFolder, paste0(utSample, "_1.fq.gz"))
+countReads <- function(fastqFolder, sampleFolder, testSample, testLabel, ext1, ext2, outputFile){
   
-  r1 <- as.numeric(nbReadFastqgz(f1))
-  r1.UT <- as.numeric(nbReadFastqgz(f1.UT))
-  
-  r1.pc <- 100
-  r1.UT.pc <- 100
-  
-  # R2
-  f2 <- file.path(fastqFolder, paste0(testSample, "_R2_001.fastq.gz"))
-  if(!file.exists(f2)) f2 <- file.path(fastqFolder, paste0(testSample, "_2.fq.gz"))
-  f2.UT <- file.path(fastqFolder, paste0(utSample, "_R2_001.fastq.gz"))
-  if(!file.exists(f2.UT)) f2.UT <- file.path(fastqFolder, paste0(utSample, "_2.fq.gz"))
-  
-  r2 <- as.numeric(nbReadFastqgz(f2))
-  r2.UT <- as.numeric(nbReadFastqgz(f2.UT))
-  
-  r2.pc <- 100
-  r2.UT.pc <- 100
-  
-  # ASSEMBLED
-  assembled <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_assembled.fastq.gz"))))
-  assembled.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_assembled.fastq.gz"))))
-  
-  if(r1 == 0){assembled.pc <- 0}else assembled.pc <- round(assembled / r1 * 100, digits = 2)
-  if(r1.UT == 0){assembled.UT.pc <- 0}else assembled.UT.pc <- round(assembled.UT / r1.UT * 100, digits = 2)
-  
-  # MERGED
-  merged <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_merged.fastq.gz"))))
-  merged.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_merged.fastq.gz"))))
-  
-  if(r1 == 0){merged.pc <- 0}else merged.pc <- round(merged / r1 * 100, digits = 2)
-  if(r1.UT == 0){merged.UT.pc <- 0}else merged.UT.pc <- round(merged.UT / r1.UT * 100, digits = 2)
-  
-  # POS
-  pos <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_pos.fastq.gz"))))
-  pos.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_pos.fastq.gz"))))
-  
-  if(merged == 0){pos.pc <- 0}else pos.pc <- round(pos / merged * 100, digits = 2)
-  if(merged.UT == 0){pos.UT.pc <- 0}else pos.UT.pc <- round(pos.UT / merged.UT * 100, digits = 2)
-  
-  # NEG (mispriming)
-  neg <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_Filt2.fastq.gz"))))
-  neg.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_Filt2.fastq.gz"))))
-  
-  if(pos == 0){neg.pc <- 0}else neg.pc <- round(neg / pos * 100, digits = 2)
-  if(pos.UT == 0){neg.UT.pc <- 0}else neg.UT.pc <- round(neg.UT / pos.UT * 100, digits = 2)
-  
-  # TRIM1
-  trim1 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_trim1.fastq.gz"))))
-  trim1.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_trim1.fastq.gz"))))
-  
-  if(neg == 0){trim1.pc <- 0}else trim1.pc <- round(trim1 / neg * 100, digits = 2)
-  if(neg.UT == 0){trim1.UT.pc <- 0}else trim1.UT.pc <- round(trim1.UT / neg.UT * 100, digits = 2)
-  
-  # TRIM2
-  trim2 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_trim2.fastq.gz"))))
-  trim2.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_trim2.fastq.gz"))))
-  
-  if(trim1 == 0){trim2.pc <- 0}else trim2.pc <- round(trim2 / trim1 * 100, digits = 2)
-  if(trim1.UT == 0){trim2.UT.pc <- 0}else trim2.UT.pc <- round(trim2.UT / trim1.UT * 100, digits = 2)
-  
-  # TRIM3
-  trim3 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_trim3.fastq.gz"))))
-  trim3.UT <- as.numeric(nbReadFastqgz(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_trim3.fastq.gz"))))
-  
-  if(trim2 == 0){trim3.pc <- 0}else trim3.pc <- round(trim3 / trim2 * 100, digits = 2)
-  if(trim2.UT == 0){trim3.UT.pc <- 0}else trim3.UT.pc <- round(trim3.UT / trim2.UT * 100, digits = 2)
-  
-  # BAM
-  bam <- as.numeric(nbReadBAM(file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_AlignmentSort.bam"))))
-  bam.UT <- as.numeric(nbReadBAM(file.path(sampleFolder, "results/fastq_aln", paste0(utSample, "_AlignmentSort.bam"))))
-  
-  if(trim3 == 0){bam.pc <- 0}else bam.pc <- round(bam / trim3 * 100, digits = 2)
-  if(trim3.UT == 0){bam.UT.pc <- 0}else bam.UT.pc <- round(bam.UT / trim3.UT * 100, digits = 2)
-  
-  # BED
-  bed <- nbReadBED(file.path(sampleFolder, "results/guide_aln", paste0(testSample, "_Alignment.bed")))
-  bed <- as.numeric(sapply(strsplit(bed, split = " "), function(i) i[1]))
-  bed.UT <- nbReadBED(file.path(sampleFolder, "results/guide_aln", paste0(utSample, "_Alignment.bed")))
-  bed.UT <- as.numeric(sapply(strsplit(bed.UT, split = " "), function(i) i[1]))
-  
-  if(bam == 0){bed.pc <- 0}else bed.pc <- round(bed / bam * 100, digits = 2)
-  if(bam.UT == 0){bed.UT.pc <- 0}else bed.UT.pc <- round(bed.UT / bam.UT * 100, digits = 2)
-  
-  # SAVE
-  toxlsx <- data.frame(File = c("R1", "R2", "assembled", "merged", "pos", "mispriming", "trim1", "trim2", "trim3", "bam", "bed"),
-                       Treated.count = c(r1, r2, assembled, merged, pos, neg, trim1, trim2, trim3, bam, bed),
-                       Treated.percentage = c(r1.pc, r2.pc, assembled.pc, merged.pc, pos.pc, neg.pc, trim1.pc, trim2.pc, trim3.pc, bam.pc, bed.pc),
-                       UN.Treated.count = c(r1.UT, r2.UT, assembled.UT, merged.UT, pos.UT, neg.UT, trim1.UT, trim2.UT, trim3.UT, bam.UT, bed.UT),
-                       UN.Treated.percentage = c(r1.UT.pc, r2.UT.pc, assembled.UT.pc, merged.UT.pc, pos.UT.pc, neg.UT.pc, trim1.UT.pc, trim2.UT.pc, trim3.UT.pc, bam.UT.pc, bed.UT.pc)
-                       )
-  
-  write.xlsx(toxlsx, file.path(sampleFolder, "results/fastq_aln", paste0(testSample, "_QC.xlsx")), overwrite = TRUE)
+  countMatList <- lapply(1:length(testSample), function(i){
+    
+    sample.current <- testSample[i]
+    label.current <- testLabel[i]
+    fastq.current <- fastqFolder[i]
+    
+    # R1
+    f1 <- file.path(fastq.current, paste0(sample.current, ext1))
+    r1 <- as.numeric(nbReadFastqgz(f1))
+    
+    r1.pc <- 100
+    
+    # R2
+    f2 <- file.path(fastq.current, paste0(sample.current, ext2))
+    r2 <- as.numeric(nbReadFastqgz(f2))
+    
+    r2.pc <- 100
+    
+    # ASSEMBLED
+    assembled <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current,  "fastq_aln", paste0(sample.current, "_assembled.fastq.gz"))))
+    if(r1 == 0){assembled.pc <- 0}else assembled.pc <- round(assembled / r1 * 100, digits = 2)
+    
+    # MERGED
+    merged <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_merged.fastq.gz"))))
+    if(r1 == 0){merged.pc <- 0}else merged.pc <- round(merged / r1 * 100, digits = 2)
+    
+    # POS
+    pos <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_pos.fastq.gz"))))
+    if(merged == 0){pos.pc <- 0}else pos.pc <- round(pos / merged * 100, digits = 2)
+    
+    # NEG (mispriming)
+    neg <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_Filt2.fastq.gz"))))
+    if(pos == 0){neg.pc <- 0}else neg.pc <- round(neg / pos * 100, digits = 2)
+    
+    # TRIM1
+    trim1 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_trim1.fastq.gz"))))
+    if(neg == 0){trim1.pc <- 0}else trim1.pc <- round(trim1 / neg * 100, digits = 2)
+    
+    # TRIM2
+    trim2 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_trim2.fastq.gz"))))
+    if(trim1 == 0){trim2.pc <- 0}else trim2.pc <- round(trim2 / trim1 * 100, digits = 2)
+    
+    # TRIM3
+    trim3 <- as.numeric(nbReadFastqgz(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_trim3.fastq.gz"))))
+    if(trim2 == 0){trim3.pc <- 0}else trim3.pc <- round(trim3 / trim2 * 100, digits = 2)
+    
+    # BAM
+    bam <- as.numeric(nbReadBAM(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_AlignmentSort.bam"))))
+    if(trim3 == 0){bam.pc <- 0}else bam.pc <- round(bam / trim3 * 100, digits = 2)
+    
+    # BED
+    bed <- nbReadBED(file.path(sampleFolder, label.current, "fastq_aln", paste0(sample.current, "_Alignment.bed")))
+    bed <- as.numeric(sapply(strsplit(bed, split = " "), function(i) i[1]))
+    if(bam == 0){bed.pc <- 0}else bed.pc <- round(bed / bam * 100, digits = 2)
+    
+    # SAVE
+    toxlsx <- data.frame(count = c(r1, r2, assembled, merged, pos, neg, trim1, trim2, trim3, bam, bed),
+                         percentage = c(r1.pc, r2.pc, assembled.pc, merged.pc, pos.pc, neg.pc, trim1.pc, trim2.pc, trim3.pc, bam.pc, bed.pc)
+    )
+    colnames(toxlsx) <- paste0(label.current, ".", colnames(toxlsx))
+    return(toxlsx)
+  })
+  countMat <- do.call(cbind, countMatList)
+  countMat <- data.frame(File = c("R1", "R2", "assembled", "merged", "pos", "mispriming", "trim1", "trim2", "trim3", "bam", "bed"),
+                         countMat)
+  write.xlsx(countMat, outputFile)
+
 }
 
+countReadsPlot <- function(inputFile, outputFile){
+  qcMat <- read.xlsx(inputFile, sheet = 1)
+  rownames(qcMat) <- qcMat$File
+  qcMat <- qcMat[, grepl ("percentage", colnames(qcMat))]
+  colnames(qcMat) <- gsub(".percentage", "", colnames(qcMat))
+  
+  pheatmap(qcMat, color = magma(10), border_color = "grey60", fontsize = 12,
+           cellwidth = 14, cellheight = 14, cluster_rows = FALSE, cluster_cols = FALSE,
+           breaks = seq(0,100, by=10),
+           filename = outputFile)
+}
 
 
 

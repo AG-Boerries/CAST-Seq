@@ -1,7 +1,7 @@
 
-runPipelineOverlap <- function()
+runPipelineTALENoverlap <- function()
 {
-
+  
   ##########################################################################################
   ############                           RUN PIPELINE                           ############
   ##########################################################################################
@@ -17,31 +17,52 @@ runPipelineOverlap <- function()
   ##########################################################################################
     
   print("################    OVERLAP ANALYSIS    ################")
+  
+  if(FALSE){
     
+    print(replicates)
+    print(repNames)
+    print(repD)
+    
+    replicates.split <- strsplit(replicates, split = ",")[[1]]
+    repNames.split <- strsplit(repNames, split = ",")[[1]]
+    
+    siteFiles <- paste0(replicates.split, "_w", w, "_FINAL.xlsx")
+    #siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
+    siteFiles <- sapply(1:length(siteFiles), function(i) list.files(repD.split[i], pattern = siteFiles[i], recursive=TRUE, full.names = TRUE))
+    siteFiles <- lapply(siteFiles, function(i) i[grepl("\\/results\\/", i)])
+    siteFiles <- unlist(siteFiles)
+    names(siteFiles) <- repNames.split
+    
+  }
+  
+  
   print(replicates)
   print(repNames)
   print(repD)
   print(repD.split)
-    
+  
   replicates.split <- strsplit(replicates, split = ",")[[1]]
   repNames.split <- strsplit(repNames, split = ",")[[1]]
   
   if(length(repD.split) == 1 & length(repD.split) < length(repNames.split)){
-  	repD.split <- rep(repD.split, length(repNames.split))
+    repD.split <- rep(repD.split, length(repNames.split))
   }
   if(length(repD.split) != length(repNames.split)){
-  	stop("please check --replicates and --repDname")
+    stop("please check --replicates and --repDname")
   }
-    
+  
   siteFiles <- paste0(replicates.split, "_w", w, "_FINAL.xlsx")
   #siteFiles <- sapply(siteFiles, function(i) list.files(repD, pattern = i, recursive=TRUE, full.names = TRUE))
   siteFiles <- sapply(1:length(siteFiles), function(i) list.files(repD.split[i], pattern = siteFiles[i], recursive=TRUE, full.names = TRUE))
-    
+  
   print(siteFiles)
-    
+  
   siteFiles <- lapply(siteFiles, function(i) i[grepl("\\/results\\/", i)])
   siteFiles <- unlist(siteFiles)
   names(siteFiles) <- repNames.split
+  
+
     
   print(siteFiles)
   if(length(siteFiles)<2) stop("at least two files are needed to perform overlap analysis")
@@ -50,8 +71,7 @@ runPipelineOverlap <- function()
   write.xlsx(compList, file.path(ovlD, paste0(ovlName, "_RAW.xlsx")), overwrite = TRUE)
   makeUpset(file.path(ovlD, paste0(ovlName, "_RAW.xlsx")))
   
-    
-    
+  
   ##########################################################################################
   ############                    BARCODE HOPING FILTER                         ############
   ##########################################################################################
@@ -61,7 +81,7 @@ runPipelineOverlap <- function()
   
   barcodeHoppingFilter(inputFile = file.path(ovlD, paste0(ovlName, "_RAW.xlsx")),
                       hardCoef = 2.5, softCoef = 2)
-                      
+  
   ##########################################################################################
   ############                DESIGNER NUCLEASE TREATED SAMPLE                  ############
   ##########################################################################################
@@ -69,12 +89,15 @@ runPipelineOverlap <- function()
   ################     GUIDE SEQ ALIGNMENT    ################ 
   print("################     GUIDE SEQ ALIGNMENT    ################")
   
+  print(file.path(ovlD, paste0(ovlName, ".xlsx")))
+  print(file.exists(file.path(ovlD, paste0(ovlName, ".xlsx"))))
+  
   # DO GUIDE ALIGNMENT ON REAL SEQUENCES
-  getGuideAlignment(inputF = file.path(ovlD, paste0(ovlName, ".xlsx")),
-  				  guide = refSeq,
-  				  alnFolder = ovlD,
-  				  gnm = GNM
-  				  )
+  getGuideAlignmentDual(inputF = file.path(ovlD, paste0(ovlName, ".xlsx")),
+  					  guideLeft = refSeq.left, guideRight = refSeq.right,
+  					  alnFolder = ovlD,
+  					  gnm = GNM
+  					  )			  
   file.remove(list.files(ovlD, pattern = "_TMP.txt", full.names = TRUE))					  
   				  
   # GENERATE RANDOM SEQUENCE BED
@@ -82,16 +105,13 @@ runPipelineOverlap <- function()
   dir.create(randomD, showWarnings = FALSE)
   randomName <- paste0("random_w", w)
   
-  # PLOT GUIDE ALIGNMENT
-  guidePlot(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
-  		  file.path(ovlD, paste0(ovlName, "_aln_heatmap.pdf")),
-  		  score = NULL, pv = NULL, ref = refSeq)# ALL
-  		  
-  # LOGO PLOT
-  logoPlot(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
-  		 file.path(ovlD, paste0(ovlName, "_aln_logo.pdf")),
-  		 score = NULL, pv = NULL, ref = refSeq)# ALL
   
+  # ASSIGN PVALUE FOR EVERY SINGLE COMBINATION
+  assignPV(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")),
+  	file.path(randomD, paste0(randomName, "_aln_stat.xlsx")))
+  	
+  # ASSIGN THE BEST COMBINATION
+  assignBestCombination(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")))	
   
   
   ################     FLANKING REGIONS    ################ 
@@ -103,41 +123,37 @@ runPipelineOverlap <- function()
   	addFlankingFromSq(file.path(ovlD, paste0(ovlName, "_aln_stat.xlsx")), flank1.sq, flank2.sq)
   }
   
-  print(file.exists(file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx"))))
-  
   ################     DEFINE GROUPS    ################ 
   print("################     DEFINE GROUPS    ################ ")
-  assignGroups(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
+  assignGroupsTALEN(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK.xlsx")),
   			 file.path(randomD, paste0(randomName, "_aln_stat_FLANK.xlsx")),
   			 otsBed,
-  			 pv.cutoff)
+  			 pv.cutoff)			 
   			 
   groupSummary(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
   	file.path(ovlD, paste0(ovlName, "_group_summary.xlsx")),
-  	hits = NULL,
-  	score = NULL, pv = NULL
+  	hits = hits.cutoff,
+  	score = score.cutoff,
+  	pv = pv.cutoff
   	)	
-  	
-  guidePlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
-            file.path(ovlD, paste0(ovlName, "_aln_heatmap_OMT.pdf")),
-            score = NULL, pv = NULL, ref = refSeq, OMTonly = TRUE)# ALL	 
+  		 
   			 
   ################     PIE CHARTS    ###############
-  print("################     PIE CHARTS    ###############")
-  piePlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
-  	    file.path(ovlD, paste0(ovlName, "_aln_piechart.pdf")),
-  	    score = NULL, pv = NULL)
+  #print("################     PIE CHARTS    ###############")
+  #piePlot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")),
+  #	    file.path(ovlD, paste0(ovlName, "_aln_piechart.pdf")),
+  #	    score = NULL, pv = NULL)
   	    
   
   ################     MISMATCHES / INDEL PERCENTAGE BARPLOT    ###############
-  print("################     MISMATCHES / INDEL PERCENTAGE BARPLOT    ###############")
-  pcBarplot(file.path(ovlD, paste0(ovlName, "_aln_heatmap.xlsx")))# ALL
+  #print("################     MISMATCHES / INDEL PERCENTAGE BARPLOT    ###############")
+  #pcBarplot(file.path(ovlD, paste0(ovlName, "_aln_heatmap.xlsx")))# ALL
   
   
   ################     GENE ANNOTATION    ################ 
   print("################     GENE ANNOTATION    ################ ")
   # Annotation
-  annotateGene(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")))
+  annotateGeneTALEN(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP.xlsx")))
   
   # Barplot per group
   geneBarplot(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")))
@@ -148,15 +164,15 @@ runPipelineOverlap <- function()
   
   ################     ALL GENES WITHIN 100KB ANNOTATION    ################ 
   print("################     ALL GENES WITHIN 100KB ANNOTATION    ################")
-  addGenes(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
+  addGenesTALEN(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")),
   	oncoFile = oncoEntrez,
   	geneMat = geneMat,
   	genes.width = 0, site.width = 100000)
-  	
+  
+  
   ################     RETURN FINAL XLSX FILE    ################ 
   print("################     RETURN FINAL XLSX FILE    ################")
   finalizeOverlap(file.path(ovlD, paste0(ovlName, "_aln_stat_FLANK_GROUP_GENES.xlsx")))	
-  		
   
   
   ################     HISTONE MARKS    ################ 
@@ -180,9 +196,11 @@ runPipelineOverlap <- function()
   
   ################     CHR PLOT    ################ 
   chrPlot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-  	file.path(ovlD, paste0(ovlName, "_aln_chrPlot.pdf")), hits = NULL, score = NULL, pv = NULL)
+          file.path(ovlD, paste0(ovlName, "_aln_chrPlot.pdf")), hits = NULL, score = NULL, pv = NULL)
   chrPlotAside(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-  	file.path(ovlD, paste0(ovlName, "_aln_chrPlot")), hits = NULL, score = NULL, pv = NULL)
+               file.path(ovlD, paste0(ovlName, "_aln_chrPlot")), hits = NULL, score = NULL, pv = NULL)
+  
+  
   
   ##########################################################################################
   ############                        CHR PLOT (CIRCLIZE)                       ############
@@ -190,61 +208,68 @@ runPipelineOverlap <- function()
   print("############    CHR PLOT (CIRCLIZE)    ############")
   ################     CHR PLOT (CIRCLIZE)    ################ 
   
-  tryCatch(
-      {
-      print(otsBed)
-  	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                     zoom.size = 25000, label = FALSE, 
-                     PV.cutoff = NULL,
-                     bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                     showNBS = TRUE,
-                     gene.bed = NULL, ots.bed = otsBed, 
-                     realigned = TRUE,
-                     outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
-                     species = circos.sp)
-                     
-      },
-      error = function(e){
-  		print("no sites on defined otsBed, use max gRNA score")
-  	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                     zoom.size = 25000, label = FALSE, 
-                     PV.cutoff = NULL,
-                     bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                     showNBS = TRUE,
-                     gene.bed = NULL, ots.bed = NULL, 
-                     outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
-                     species = circos.sp)
-      }
-  	)
-    
-    
-    tryCatch(
-      {
-  	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                   zoom.size = 25000, label = FALSE, 
-                   PV.cutoff = NULL,
-                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                   showNBS = FALSE,
-                   gene.bed = NULL, ots.bed = otsBed, 
-                   realigned = TRUE,
-                   outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
-                   species = circos.sp)
-                     
-      },
-      error = function(e){
-  		print("no sites on defined otsBed, use max gRNA score")
-  	circlizePipeline(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
-                   zoom.size = 25000, label = FALSE, 
-                   PV.cutoff = NULL,
-                   bestScore.cutoff = NULL, bestFlank.cutoff = 25,
-                   showNBS = FALSE,
-                   gene.bed = NULL, ots.bed = NULL, 
-                   outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
-                   species = circos.sp)
-      }
-  	)
-                                   
   
+  	tryCatch(
+      	{
+  	circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+                          zoom.size = 25000, label = FALSE, 
+                          PV.cutoff = NULL,
+                          bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                          showNBS = TRUE,
+                          gene.bed = NULL, ots.bed = otsBed, 
+                          realigned = TRUE,
+                          outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                          species = circos.sp)
+      },
+      error = function(e){
+      print(read.delim(otsBed, header = FALSE))
+  	print("no sites on defined otsBed, use max gRNA score")
+  		circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+                          zoom.size = 25000, label = FALSE, 
+                          PV.cutoff = NULL,
+                          bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                          showNBS = TRUE,
+                          gene.bed = NULL, ots.bed = NULL, 
+                          realigned = FALSE,
+                          outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k.pdf")),
+                          species = circos.sp)
+  
+  		    }
+  	)
+  	
+  	
+  	tryCatch(
+      	{
+  		circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+                        zoom.size = 25000, label = FALSE, 
+                        PV.cutoff = NULL,
+                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                        showNBS = FALSE,
+                        gene.bed = NULL, ots.bed = otsBed, 
+                        realigned = TRUE,
+                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                        species = circos.sp)
+      },
+      error = function(e){
+      print(read.delim(otsBed, header = FALSE))
+  	print("no sites on defined otsBed, use max gRNA score")
+  		circlizePipelineTALEN(siteFile = file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
+                        zoom.size = 25000, label = FALSE, 
+                        PV.cutoff = NULL,
+                        bestScore.cutoff = NULL, bestFlank.cutoff = 25,
+                        showNBS = FALSE,
+                        gene.bed = NULL, ots.bed = NULL, 
+                        realigned = FALSE,
+                        outFile = file.path(ovlD, paste0(ovlName, "_circlize_25k_woNBS.pdf")),
+                        species = circos.sp)
+  
+  		    }
+  	)
+  
+  
+  
+  
+    
   ##########################################################################################
   ############                           HITS BARPLOT                           ############
   ##########################################################################################
@@ -252,10 +277,11 @@ runPipelineOverlap <- function()
   
   hitsBarplot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
               pv = NULL, top = 50, showNBS = TRUE, log = TRUE,
-              outName = file.path(ovlD, paste0(ovlName, "_hits_barplot.pdf")))
+              outName = file.path(ovlD, paste0(ovlName, "_w", w, "_hits_barplot.pdf")))
   hitsBarplot(file.path(ovlD, paste0(ovlName, "_FINAL.xlsx")),
               pv = NULL, top = 50, showNBS = FALSE, log = TRUE,
-              outName = file.path(ovlD, paste0(ovlName, "_hits_barplot_woNBS.pdf")))
+              outName = file.path(ovlD, paste0(ovlName, "_w", w, "_hits_barplot_woNBS.pdf")))
+  
   
   ##########################################################################################
   ############                        REMOVE TMP FILES                          ############
@@ -270,7 +296,8 @@ runPipelineOverlap <- function()
     file.remove(torm)
   }
 
-
-
 }
+
+
+
 

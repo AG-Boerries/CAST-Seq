@@ -14,38 +14,45 @@
 ############################################
 
 
-finalize <- function(inputFile){
+finalize <- function(inputFile, outputFile, nbOvl = 1, nbSignif = 1){
 	# LOAD INPUT FILE
-	readMat <- read.xlsx(inputFile, sheet = 1)
+	readMat.raw <- read.xlsx(inputFile, sheet = 1)
 	
 	# RE-ORDER
-	readMat$group <- factor(readMat$group, levels = c("OMT", "HMT", "NBS"))
-	readMat <- readMat[order(readMat$is.ON, readMat$group, -readMat$hits, -readMat$read, readMat$chromosome, readMat$start), ]
+	readMat.raw$group <- factor(readMat.raw$group, levels = c("OMT", "HMT", "NBS"))
+	readMat.raw <- readMat.raw[order(readMat.raw$is.ON, readMat.raw$group, -readMat.raw$hits, -readMat.raw$read, readMat.raw$chromosome, readMat.raw$start), ]
 	
-	# SITE SUBSETS
-	readMat.OMT <- readMat[readMat$group == "OMT",]
-	readMat.HMT <- readMat[readMat$group == "HMT",]
-	readMat.NBS <- readMat[readMat$group == "NBS",]
+	# OVL AND SIGNIFICANT FILTERS
+	keep <- readMat.raw$NB.OVL >= nbOvl & readMat.raw$NB.SIGNIF >= nbSignif
+	if(sum(keep) == 0){
+	  print(paste0("no site pass the overlap thresholds"))  
+	  
+	  # SAVE
+	  toxlsx <- list(RAW = readMat.raw)
+	  
+	  write.xlsx(toxlsx, outputFile,
+	             row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'), overwrite = TRUE)
+	  
+	}else{
+	  readMat <- readMat.raw[keep, ]
+	  
+	  # SITE SUBSETS
+	  readMat.OMT <- readMat[readMat$group == "OMT",]
+	  readMat.HMT <- readMat[readMat$group == "HMT",]
+	  readMat.NBS <- readMat[readMat$group == "NBS",]
+	  
+	  # SAVE
+	  toxlsx <- list(ALL = readMat,
+	                 OMT = readMat.OMT,
+	                 HMT = readMat.HMT,
+	                 NBS = readMat.NBS,
+	                 RAW = readMat.raw)
+	  
+	  write.xlsx(toxlsx, outputFile,
+	             row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'), overwrite = TRUE)
+
+	}
 	
-	readMat.signif <- readMat[readMat$adj.pvalue < 0.05, ]
-	readMat.OMT.signif <- readMat[readMat$group == "OMT" & readMat$adj.pvalue < 0.05,]
-	readMat.HMT.signif <- readMat[readMat$group == "HMT" & readMat$adj.pvalue < 0.05,]
-	readMat.NBS.signif <- readMat[readMat$group == "NBS" & readMat$adj.pvalue < 0.05,]
-
-	# SAVE
-	toxlsx <- list(ALL = readMat,
-				   OMT = readMat.OMT,
-				   HMT = readMat.HMT,
-				   NBS = readMat.NBS,
-				   ALL.signif = readMat.signif,
-				   OMT.signif = readMat.OMT.signif,
-				   HMT.signif = readMat.HMT.signif,
-				   NBS.signif = readMat.NBS.signif
-				   )
-
-	write.xlsx(toxlsx, gsub("_aln_stat_FLANK_GROUP_GENES.xlsx", "_FINAL.xlsx", inputFile),
-		row.names = FALSE, firstRow = T, headerStyle = createStyle(textDecoration = 'bold'), overwrite = TRUE)
-
 }
 
 finalizeOverlap <- function(inputFile){
@@ -128,7 +135,7 @@ gene2bed <- function(entrez, upstream = 0, downstream = 0)
 	return(bedMat)
 }
 
-addGenes <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.width = 100000)
+addGenes <- function(inputFile, outputFile, oncoFile, geneMat, genes.width = 0, site.width = 100000)
 {
 	print(ORG.STR)	
 	
@@ -189,23 +196,23 @@ addGenes <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.width =
 		df.ovl$gene.entrez[df.ovl$alignment.id == i]
 		)
 	oncoChr <- lapply(geneList, function(i){
-		if(length(i)==0) return(NA)
-		if(is.na(i)) return(NA)
-		onco.entrez <- intersect(i, oncoEntrez)
-		if(length(onco.entrez)==0) return(NA)
-		return(paste(entrez2symbol(onco.entrez), collapse = "; "))
-		})
+	  if(length(i)==0) return(NA)
+	  onco.entrez <- intersect(i, oncoEntrez)
+	  if(length(onco.entrez)==0) return(NA)
+	  if(is.na(i[1])) return(NA)
+	  return(paste(entrez2symbol(onco.entrez), collapse = "; "))
+	})
 	
 	#write.xlsx(cbind(readMat, "Genes.within.100kb" = unlist(geneChr), "Oncogenes.within.100kb" = unlist(oncoChr)),
 	#	gsub(".xlsx", "_final.xlsx", inputFile), row.names = FALSE)
 	
 	write.xlsx(cbind(readMat, "Genes.within.100kb" = unlist(geneChr), "Oncogenes.within.100kb" = unlist(oncoChr)),
-		inputFile, row.names = FALSE, overwrite = TRUE)
+	           outputFile, row.names = FALSE, overwrite = TRUE)
 
 }
 
 
-addGenesTALEN <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.width = 100000)
+addGenesTALEN <- function(inputFile, outputFile, oncoFile, geneMat, genes.width = 0, site.width = 100000)
 {
 	# LOAD ONCOGENES
 	oncoEntrez <- read.delim(oncoFile, header = FALSE, stringsAsFactors = FALSE)
@@ -273,7 +280,7 @@ addGenesTALEN <- function(inputFile, oncoFile, geneMat, genes.width = 0, site.wi
 	#	gsub(".xlsx", "_final.xlsx", inputFile), row.names = FALSE)
 	
 	write.xlsx(cbind(readMat, "Genes.within.100kb" = unlist(geneChr), "Oncogenes.within.100kb" = unlist(oncoChr)),
-		inputFile, row.names = FALSE, overwrite = TRUE)
+	           outputFile, row.names = FALSE, overwrite = TRUE)
 
 }
 

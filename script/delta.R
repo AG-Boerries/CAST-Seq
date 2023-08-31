@@ -5,12 +5,13 @@
 
 # TO DO: get DELTA, use grange to intersect ots and sites, remove everything +/- otsD of ots
 
-getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
+getDelta <- function(inputFile, outFolder, otsF = NULL, otsD = 50, distance = 2500)
 {
 	# inputFile: bed file (output from fastq alignment pipeline)
 	# output: generate a _delta.bed file and a _delta_density.pdf plot
 	
-	inputName <- gsub(".bed$", "", inputFile)
+	inputName <- gsub("_Alignment.bed$", "", basename(inputFile))
+	inputName <- file.path(outFolder, inputName)
 	
 	# read the bed file
 	bed.raw <-  as.data.frame(read.table(inputFile, header=FALSE,sep="\t", stringsAsFactors=FALSE, quote="", fill = TRUE))
@@ -95,14 +96,21 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 
 	# Calculate delta
 	print("Calculate delta")
-	delta <- c()   # empty object to fill during the for loop
-	for(i in unique(bed4[,1])){ # start for loop for each chomosome
-		tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
-		chrDelta <- as.numeric(tempbed[1,2])
-		if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
-		delta <- c(delta, chrDelta)
-		}
-
+	#delta <- c()   # empty object to fill during the for loop
+	#for(i in unique(bed4[,1])){ # start for loop for each chomosome
+	#		tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
+	#	chrDelta <- as.numeric(tempbed[1,2])
+	#	if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
+	#	delta <- c(delta, chrDelta)
+	#}
+	delta <- mclapply(unique(bed4[,1]), function(i){
+	  tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
+	  chrDelta <- as.numeric(tempbed[1,2])
+	  if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
+	  return(chrDelta)
+	}, mc.cores = NBCPU)   # empty object to fill during the for loop
+	delta <- unlist(delta)
+	
 	# Plot delta density
 	#pdf(paste0(inputName, "_delta_density_RAW.pdf"))
 	#tiff(paste0(inputName, "_delta_density.tiff"), units="in", width=5, height=5, res = 800)
@@ -260,13 +268,13 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 
 	# Calculate delta
 	print("Calculate delta")
-	delta <- c()   # empty object to fill during the for loop
-	for(i in unique(bed4[,1])){ # start for loop for each chomosome
-		tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
-		chrDelta <- as.numeric(tempbed[1,2])
-		if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
-		delta <- c(delta, chrDelta)
-		}
+	delta <- mclapply(unique(bed4[,1]), function(i){
+	  tempbed <- subset(bed4, chromosome==i) # take the data for one choromose 
+	  chrDelta <- as.numeric(tempbed[1,2])
+	  if(nrow(tempbed) > 1) chrDelta <- c(chrDelta, as.numeric(tempbed[2:nrow(tempbed),2]) - as.numeric(tempbed[1:(nrow(tempbed)-1),2]))
+	  return(chrDelta)
+	}, mc.cores = NBCPU)   # empty object to fill during the for loop
+	delta <- unlist(delta)
 	
 	
 	}else{
@@ -313,8 +321,11 @@ getDelta <- function(inputFile, otsF = NULL, otsD = 50, distance = 2500)
 
 
 
-getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
+getDeltaShuffle <- function(inputFile, outFolder, nb, distance, genome.size)
 {
+  inputName <- gsub("_delta.bed$", "", basename(inputFile))
+  inputName <- file.path(outFolder, inputName)
+  
 	# create tmp dir
 	dir.create(dir1 <- file.path(tempdir(), "shuffle"))
 	
@@ -442,7 +453,7 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 	p <- p + theme_bw(base_size = 16)
 	p <- p + xlab("log10(read base distance)")
 	p <- p + ggtitle(paste0("Cutoff: ", distance))
-	ggsave(plot = p, filename = gsub(".bed", ".shuffle_delta_density.pdf", inputFile),
+	ggsave(plot = p, filename = paste0(inputName, ".shuffle_delta_density.pdf"),
 	       width = 6, height = 6)
 	
 	# Percentage of reads below / above the distance threshold
@@ -453,7 +464,7 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 	toxlsx <- data.frame(distance = distance,
 	                     bellow.percentage = bellow.pc,
 	                     above.percentage = above.pc)
-	write.xlsx(toxlsx, gsub(".bed", ".shuffle_delta_density.xlsx", inputFile), overwrite = TRUE)
+	write.xlsx(toxlsx, paste0(inputName, ".shuffle_delta_density.xlsx"), overwrite = TRUE)
 	
 	
 	# Percentage of pre-defined delta
@@ -461,7 +472,7 @@ getDeltaShuffle <- function(inputFile, nb, distance, genome.size)
 		return(sum(d < distance) / length(d))
 		})
 	deltaPC.m <- mean(unlist(deltaPC))	
-	write(deltaPC.m, gsub(".bed", "_PERCENTAGE.txt", inputFile))
+	write(deltaPC.m, paste0(inputName, "_PERCENTAGE.txt"))
 	
 	# delete tmp dir
 	unlink(dir1, recursive = T)
