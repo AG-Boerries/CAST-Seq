@@ -4,9 +4,11 @@ CAST(chromosomal aberrations analysis by single targeted LM-PCR)-Seq is a novel 
 
 ## Citation
 
-If you use the original CAST-Seq pipeline please cite [Turchiano et al., Cell Stem Cell, 2021](https://www.sciencedirect.com/science/article/abs/pii/S1934590921000527?via%3Dihub)
+Original CAST-Seq pipeline:  [Turchiano et al., Cell Stem Cell, 2021](https://www.sciencedirect.com/science/article/abs/pii/S1934590921000527?via%3Dihub)
 
-If you use the T-CAST pipeline please cite [Rhiel et al., Front. Genome Ed., 2023](https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full)
+T-CAST pipeline: [Rhiel et al., Front. Genome Ed., 2023](https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full)
+
+D-CAST pipeline: IN PREP
 
 ## Getting Started
 
