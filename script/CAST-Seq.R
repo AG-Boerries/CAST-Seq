@@ -899,6 +899,35 @@ if(opt$species == "hg"){
   #histoneFiles <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = TRUE)
   #names(histoneFiles) <- list.files(file.path(annotD, "histones"), pattern = ".broadPeak_hg38_homer.bed$", full.names = FALSE)
   #names(histoneFiles) <- gsub(".broadPeak_hg38_homer.bed", "", names(histoneFiles))
+}else if(opt$species == "dr" | opt$species == "dr11"){
+  #print_help(opt_parser)
+  #stop("mmul not yet compatible", call.=FALSE)
+  
+  # Macaca
+  require(org.Dr.eg.db)
+  require(BSgenome.Drerio.UCSC.danRer11)
+  require(TxDb.Drerio.UCSC.danRer11.refGene)
+  TXDB <- TxDb.Drerio.UCSC.danRer11.refGene
+  ORG <- org.Dr.eg.db
+  ORG.STR <- "org.Dr.eg.db"
+  GNM <- BSgenome.Drerio.UCSC.danRer11::Drerio
+  
+  # ANNOTATION DIRECTORY
+  annotD <- file.path(homeD, "annotations/Danio_rerio")
+  
+  # SET GENOME VERSION
+  myGenome.size <- file.path(annotD, "chrom.sizes")
+  
+  # DR11 TSS TES
+  geneMat <- read.delim(file.path(annotD, "dr11_TSS_TES.txt"), header = FALSE)
+  
+  # SET ONCO ENTREZ LIST
+  oncoEntrez <- file.path(annotD, "CancerGenesList_ENTREZ.txt")
+  onco.width <- 3000
+  
+  # SET CIRCOS PLOT SPECIES
+  circos.sp <- "dr11"
+  
 }else{
 	print_help(opt_parser)
 	stop("wrong species (must be hg).n", call.=FALSE)
