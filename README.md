@@ -8,7 +8,7 @@ Original CAST-Seq pipeline:  [Turchiano et al., Cell Stem Cell, 2021](https://ww
 
 T-CAST pipeline: [Rhiel et al., Front. Genome Ed., 2023](https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full)
 
-D-CAST pipeline: [Klermund et al., Molecular Therapy, 2024]([https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full](https://www.sciencedirect.com/science/article/pii/S1525001624001473?via%3Dihub))
+D-CAST pipeline: [Klermund et al., Molecular Therapy, 2024](https://www.sciencedirect.com/science/article/pii/S1525001624001473?via%3Dihub)
 
 ## Getting Started
 
