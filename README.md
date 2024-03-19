@@ -8,7 +8,7 @@ Original CAST-Seq pipeline:  [Turchiano et al., Cell Stem Cell, 2021](https://ww
 
 T-CAST pipeline: [Rhiel et al., Front. Genome Ed., 2023](https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full)
 
-D-CAST pipeline: IN PREP
+D-CAST pipeline: [Klermund et al., Molecular Therapy, 2024]([https://www.frontiersin.org/articles/10.3389/fgeed.2023.1130736/full](https://www.sciencedirect.com/science/article/pii/S1525001624001473?via%3Dihub))
 
 ## Getting Started
 
@@ -191,7 +191,7 @@ Additional parameters can be changed in the command above. Here is a description
 **--cpu** number of CPUs (default 2) *at least 4 is advised*<br/>
 **--pythonPath** python path (default "/usr/bin/python")<br/>
 
-#### T-CAST and U-CAST specific parameters
+#### T-CAST and D-CAST specific parameters
 These parameters are only used when **--pipeline** "talen" is set.<br/>
 **--grnaR** name of gRNA (RIGHT) fasta file<br/>
 **--grnaL** name of gRNA (LEFT) fasta file<br/>
